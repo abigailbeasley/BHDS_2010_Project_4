@@ -68,7 +68,23 @@ ggplot(data, aes(x=Medical.Condition, fill=Gender)) +
   geom_bar(position='stack') +
   scale_fill_manual(values = c("Male" = "lightblue", "Female" = "orange")) +
   theme_minimal() +
-  labs(title='Hospital Visits by Admission Type and Gender')
+  labs(title='Hospital Visits by Condition and Gender')
 
 ```
+```{r}
+# billing by condition
+ggplot(data, aes(x=Medical.Condition,y=Billing.Amount, fill=Gender)) +
+  stat_summary(fun.y=mean, geom='bar', alpha=.7) +
+  theme_minimal()+
+  labs(title='Billing Amount By Condition Type and Gender')
 
+```
+```{r}
+# type of condition by age
+# billing by condition
+ggplot(data, aes(x=Age,fill=Medical.Condition)) +
+  stat_count() +
+  labs(title='Medical Condition Counts By Age') +
+  theme_minimal()
+
+```
