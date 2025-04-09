@@ -1,0 +1,81 @@
+---
+title: "diabetes mortality"
+author: "Abigail Beasley"
+date: "2025-04-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(scales)
+library(usmap)
+
+library(sf)
+library(tigris)
+
+```
+
+```{r}
+data <- read.csv('data/IHME_USA_LE_EDU_COUNTY_2000_2019_CODEBOOK_Y2024M12D18.CSV')
+```
+
+
+```{r}
+names(data)
+
+
+```
+
+```{r}
+unique(data$measure_id)
+
+unique(data$measure_name)
+
+unique(data$race_name)
+
+unique(data$sex_name)
+
+length(unique(data$location_name))
+length(unique(data$fips))
+
+unique(data$cause_id)
+unique(data$cause_name)
+
+length(unique(data$age_name))
+unique(data$age_name)
+```
+
+```{r}
+
+
+```
+
+```{r}
+by_race <- data %>%
+  filter(age_name=='All Ages' & location_name=='United States of America') %>%
+  select(race_name, val, lower, upper)
+
+# total diabetes mortality by race
+ggplot(by_race, aes(x=race_name, y=val)) +
+  geom_bar(stat='identity') +
+  theme_classic()+
+  labs(title='Average Diabetes Mortality Rate by Race per 100k') +
+  scale_y_continuous(labels = comma)
+```
+
+```{r}
+# total diabetes mortality by race and age group
+ggplot(data, aes(x=race_name, y=val, fill=age_name)) +
+  stat_summary(fun.y=sum, geom='bar', ) +
+  theme_classic()+
+  labs(title='Average Diabetes Mortality Rate by Race per 100k') +
+  scale_y_continuous(labels = comma)
+```
+```
+
+
+
