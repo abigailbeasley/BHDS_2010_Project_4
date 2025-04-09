@@ -23,6 +23,7 @@ data <- read.csv("data/healthcare_dataset.csv")
 is.numeric(data$Age)
 is.numeric(data$Billing.Amount)
 ```
+
 ```{r}
 # column names
 names(data)
@@ -31,12 +32,43 @@ names(data)
 ```{r}
 # admission counts by gender
 ggplot(data, aes(x=Admission.Type, fill=Gender)) +
-  geom_bar(position='stack')
+  geom_bar(position='stack') +
+  scale_fill_manual(values = c("Male" = "lightblue", "Female" = "orange")) +
+  theme_minimal() +
+  labs(title='Hospital Visits by Admission Type and Gender')
 ```
 
 ```{r}
-# billing by 
+# billing by type of admission
 ggplot(data, aes(x=Admission.Type,y=Billing.Amount)) +
-  stat_summary(fun.y=mean, geom='bar', fill='lightblue')
+  stat_summary(fun.y=mean, geom='bar', fill='lightblue') +
+  theme_minimal()+
+  labs(title='Billing Amount By Admission Type')
   
 ```
+
+```{r}
+ggplot(data, aes(x=Gender,y=Billing.Amount)) +
+  stat_summary(fun.y=mean, geom='bar', fill='lightblue') +
+  labs(title='Average Billing Amount by Gender')
+```
+
+```{r}
+# billing by type of admission
+ggplot(data, aes(x=Age,y=Billing.Amount, fill=Gender)) +
+  stat_summary(fun.y=mean, geom='bar', alpha=.7) +
+  theme_minimal()+
+  labs(title='Billing Amount By Age and Gender')
+
+```
+
+```{r}
+# Condition by Gender
+ggplot(data, aes(x=Medical.Condition, fill=Gender)) +
+  geom_bar(position='stack') +
+  scale_fill_manual(values = c("Male" = "lightblue", "Female" = "orange")) +
+  theme_minimal() +
+  labs(title='Hospital Visits by Admission Type and Gender')
+
+```
+
