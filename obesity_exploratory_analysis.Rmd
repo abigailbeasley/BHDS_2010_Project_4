@@ -1,0 +1,71 @@
+---
+title: "Prevalence of Obesity/Overweight"
+author: "Abigail Beasley"
+date: "2025-04-09"
+output: html_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(scales)
+library(usmap)
+
+library(sf)
+library(tigris)
+
+```
+
+```{r}
+data <- read.csv('data/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050_AGES_2_24_OW_OB_Y2024M11D07.CSV')
+```
+
+
+```{r}
+names(data)
+```
+
+```{r}
+unique(data$location_level)
+```
+
+```{r}
+state_level <- data %>%
+  filter(location_level=='State')
+
+state_level$state <- state_level$location_name
+
+```
+
+```{r}
+toddlers_state_level_female_1990_overweight <- state_level %>%
+  filter(sex=='Female' & year_id==1990 & metric=='overweight' & age_group_name=='2 to 4')
+  
+```
+
+```{r}
+plot_usmap(
+  color = "white",
+  linewidth = 0.1,
+  regions = "states",
+  data = toddlers_state_level_female_1990_overweight,
+  values = "mean_prev"
+)
+#Get descriptive statistics for mean prevalence.
+stat.desc(toddlers_state_level_female_1990_overweight$mean_prev)
+
+#Creating a histogram to visualize spread of data.
+ggplot(toddlers_state_level_female_1990_overweight, aes(x=mean_prev)) + geom_histogram(binwidth = 0.01, fill = "skyblue", color = "black") + labs(title = "Histogram of Overweight Prevalence", x = "Prevalence", y = "Count")
+
+#Creating a boxplot to compare different quantative values.
+ggplot(toddlers_state_level_female_1990_overweight, aes(x = mean_prev)) + geom_boxplot(fill = "plum") + labs(title = "Bxoplot of Overweight Prevalence", y = "Prevalence")
+```
+
+
+
+

@@ -1,2 +1,7 @@
 .DS_Store
 data/healthcare_dataset.csv
+data/healthcare_dataset.pdf
+/data
+.RData
+.Rhistory
+diabetes_mortality.Rmd
