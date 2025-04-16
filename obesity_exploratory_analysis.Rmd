@@ -56,7 +56,14 @@ plot_usmap(
   data = toddlers_state_level_female_1990_overweight,
   values = "mean_prev"
 )
+#Get descriptive statistics for mean prevalence.
+stat.desc(toddlers_state_level_female_1990_overweight$mean_prev)
 
+#Creating a histogram to visualize spread of data.
+ggplot(toddlers_state_level_female_1990_overweight, aes(x=mean_prev)) + geom_histogram(binwidth = 0.01, fill = "skyblue", color = "black") + labs(title = "Histogram of Overweight Prevalence", x = "Prevalence", y = "Count")
+
+#Creating a boxplot to compare different quantative values.
+ggplot(toddlers_state_level_female_1990_overweight, aes(x = mean_prev)) + geom_boxplot(fill = "plum") + labs(title = "Bxoplot of Overweight Prevalence", y = "Prevalence")
 ```
 
 

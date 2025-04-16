@@ -52,7 +52,9 @@ ui <- fluidPage(
 
         # Show a plot of the generated distribution
         mainPanel(
-           plotOutput("mapPlot")
+         tabsetPanel(
+           tabPanel("Map", plotOutput("mapPlot")), #Map tab
+            tabPanel("Histogram", plotlyOutput("histPlot")) #Histogram tab
         )
     )
 )
@@ -78,6 +80,20 @@ server <- function(input, output) {
           values = "mean_prev")
         
     })
+    #Creating the interactive histogram. 
+    
+    #Filtering data for plot as well.
+    output$histPlot <- renderPlotly({
+        plot_data <- state_level %>%
+        filter(sex == input$gender & year_id == input$year & age_group_name == input$age)
+    
+    #Creating histogram using ggplot
+    ggplot(plot_data, aes(x = mean_perv)) + geom_histogram(bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
+        labs(title = "Distribution of Overweight Prevalence",
+             x = "Mean Prevalence (%)"
+             y = "Frequency" +
+             theme_minimal()
+ })       
 }
 
 # Run the application 
