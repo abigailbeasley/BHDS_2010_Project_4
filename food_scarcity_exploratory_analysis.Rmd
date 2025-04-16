@@ -1,0 +1,212 @@
+---
+title: "food_scarcity"
+author: "Abigail Beasley"
+date: "2025-04-13"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(scales)
+library(usmap)
+library(maps)
+
+library(sf)
+library(tigris)
+
+```
+
+```{r}
+# loading in data on food scarcity
+food_data <- read.csv('data/2019 Food Access Research Atlas Data/Food Access Research Atlas.csv')
+
+# loading in data on obesity deaths
+health_data <- read.csv('data/IHME_USA_DIABETES_COUNTY_RACE_ETHN_2000_2019_BOTH/IHME_USA_DIABETES_COUNTY_RACE_ETHN_2000_2019_MX_2019_BOTH_Y2025M02D10.CSV')
+```
+
+```{r}
+names(food_data)
+```
+```{r}
+names(health_data)
+```
+
+## Exploring Food Scarcity Data
+
+```{r cleaning food data}
+
+# remove "county" suffix and convert county name to lowercase
+county_lower = tolower(str_replace(food_data$County, " County$", ""))
+
+# convert state name to lowercase
+state_lower = tolower(food_data$State)
+
+# combine them into the required "state,county" format
+food_data$county_lower = paste(state_lower, county_lower, sep = ",")
+
+# merging fips data
+food_data <- food_data %>%
+  left_join(county.fips, by = c("county_lower" = "polyname"))
+
+# converting to character for plotting
+food_data$fips <- as.character(food_data$fips)
+
+# converting to numeric for plotting
+food_data$PovertyRate <- as.numeric(food_data$PovertyRate)
+
+food_data$MedianFamilyIncome <- as.numeric(food_data$MedianFamilyIncome)
+
+# getting county data for plotting
+county_plot_data <- food_data %>%
+  select(County, county_lower, fips) %>%
+  unique()
+
+```
+
+```{r cleaning health data}
+# adding location_level variable
+
+# converting to character
+health_data$fips <- as.character(health_data$fips)
+
+# some fips are missing trailing 0--adding it in
+health_data$fips <- ifelse(nchar(health_data$fips) == 4, paste0('0', health_data$fips), health_data$fips)
+
+# handling length first
+# if just prefix, its a state
+health_data$location_level <- ifelse(nchar(health_data$fips) == 5, 'County', 'State')
+
+# adding 'Country' level where appropriate
+health_data$location_level <- ifelse(health_data$location_name == 'United States of America', 'Country', health_data$location_level)
+
+# adding death count
+health_data$death_count <- health_data$val * 100000
+
+```
+
+
+```{r}
+# function to aggregate variable on county level
+county_agg <- function (df, var) {
+  
+  var <- rlang::sym(var)  # converting to symbol
+  
+  # aggregating on county level
+  county_level_agg <- df %>%
+    group_by(county_lower) %>%
+    # getting the weighted 
+    summarize(county_level = sum(!!var * Pop2010, na.rm = TRUE) / sum(Pop2010[!is.na(!!var)])) %>%
+    rename(!!paste0(var, "_county_level") := county_level)
+  
+  return(county_level_agg)
+
+}
+```
+
+```{r}
+# aggregating poverty to county level
+county_pov_rate <- county_agg(food_data, 'PovertyRate')
+
+county_pov_rate <- county_pov_rate %>%
+  left_join(county_plot_data, by='county_lower')
+```
+
+```{r}
+
+plot_usmap(
+  regions = "counties",
+  data = county_pov_rate,
+  values = "PovertyRate_county_level",  # or "PovertyBucket" if you've bucketed the data
+  color = "white",
+  linewidth = 0.1
+)
+```
+
+```{r}
+
+# function to aggregate variable on state level
+state_agg <- function (df, var) {
+  
+  var <- rlang::sym(var)  # converting to symbol
+  
+  # aggregating on state level
+  state_level_agg <- df %>%
+    group_by(State) %>%
+    # getting the weighted 
+    summarize(state_level = sum(!!var * Pop2010, na.rm = TRUE) / sum(Pop2010[!is.na(!!var)])) %>%
+    rename(!!paste0(var, "_state_level") := state_level)
+  
+  # adding lower-case state for graphing
+  state_level_agg$state <- state_level_agg$State
+  
+  return(state_level_agg)
+
+}
+```
+
+
+```{r}
+# aggregating poverty to statelevel
+state_pov_rate <- state_agg(food_data, 'PovertyRate')
+
+# aggregating income
+state_income_level <- state_agg(food_data, 'MedianFamilyIncome')
+```
+
+```{r}
+
+plot_usmap(
+  regions = "states",
+  data = state_income_level,
+  values = "MedianFamilyIncome_state_level",
+  color = "white",
+  linewidth = 0.1
+)
+```
+
+## Exploring Health Data
+
+Looking at average death rate 
+```{r}
+# getting death count by county
+county_health_data <- health_data %>%
+  group_by(fips) %>%
+  summarize(average_death_count = mean(death_count, na.rm=TRUE))
+
+```
+
+```{r summarizing on geographical levels}
+# national obesity stats
+national_level_health_data <- health_data %>%
+  filter(location_level == 'Country')
+
+# health data on state level
+state_level_health <- health_data %>%
+  filter(location_level=='State')
+
+# health data on county level
+state_level_health <- health_data %>%
+  filter(location_level=='County')
+```
+
+```{r}
+filter_factors_county_level <- county_level %>%
+  filter(sex=='Male' & year_id==1990 & age_group_name=='2 to 4')
+```
+
+```{r}
+# plotting death count 
+plot_usmap(
+  regions = "counties",
+  data = county_health_data,
+  values = "average_death_rate",
+  color = "white",
+  linewidth = 0.1
+)
+
+```
+

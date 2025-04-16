@@ -15,6 +15,17 @@ library(usmap)
 library(sf)
 library(tigris)
 
+# loading in data
+data <- read.csv('../data/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050_AGES_2_24_OW_OB_Y2024M11D07.CSV')
+
+
+# filtering on state level
+state_level <- data %>%
+  filter(location_level=='State')
+
+# adding state variable
+state_level$state <- state_level$location_name
+
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
@@ -50,16 +61,6 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  
-    # loading in data
-    data <- read.csv('../data/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050_AGES_2_24_OW_OB_Y2024M11D07.CSV')
-  
-    # filtering on state level
-    state_level <- data %>%
-      filter(location_level=='State')
-    
-    # adding state variable
-    state_level$state <- state_level$location_name
     
     # creating map output
     output$mapPlot <- renderPlot({
