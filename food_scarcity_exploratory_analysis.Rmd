@@ -73,28 +73,19 @@ county_plot_data <- food_data %>%
 # converting to character
 health_data$fips <- as.character(health_data$fips)
 
-# some strings are missing trailing 0--adding it in
+# some fips are missing trailing 0--adding it in
 health_data$fips <- ifelse(nchar(health_data$fips) == 4, paste0('0', health_data$fips), health_data$fips)
 
-# logic: if fips = NA then location is overall (All of US)
-# if length(fips) = 1 or 2, then state level
-# else fips is county level
-
 # handling length first
+# if just prefix, its a state
 health_data$location_level <- ifelse(nchar(health_data$fips) == 5, 'County', 'State')
 
-# adding overall values
-health_data$location_level <- ifelse(is.na(health_data$fips), 'Country', health_data$location_level)
+# adding 'Country' level where appropriate
+health_data$location_level <- ifelse(health_data$location_name == 'United States of America', 'Country', health_data$location_level)
 
-# printing proportion of values in each level
-print(table(health_data$location_level))
+# adding death count
+health_data$death_count <- health_data$val * 100000
 
-print(table(nchar(health_data$fips)))
-
-# exploring issue
-health_data$fip_len <- nchar(health_data$fips)
-
-two_char <- health_data[health_data$fip_len == 4,]
 ```
 
 
@@ -171,7 +162,7 @@ state_income_level <- state_agg(food_data, 'MedianFamilyIncome')
 plot_usmap(
   regions = "states",
   data = state_income_level,
-  values = "MedianFamilyIncome_state_level",  # or "PovertyBucket" if you've bucketed the data
+  values = "MedianFamilyIncome_state_level",
   color = "white",
   linewidth = 0.1
 )
@@ -179,6 +170,43 @@ plot_usmap(
 
 ## Exploring Health Data
 
+Looking at average death rate 
 ```{r}
+# getting death count by county
+county_health_data <- health_data %>%
+  group_by(fips) %>%
+  summarize(average_death_count = mean(death_count, na.rm=TRUE))
 
 ```
+
+```{r summarizing on geographical levels}
+# national obesity stats
+national_level_health_data <- health_data %>%
+  filter(location_level == 'Country')
+
+# health data on state level
+state_level_health <- health_data %>%
+  filter(location_level=='State')
+
+# health data on county level
+state_level_health <- health_data %>%
+  filter(location_level=='County')
+```
+
+```{r}
+filter_factors_county_level <- county_level %>%
+  filter(sex=='Male' & year_id==1990 & age_group_name=='2 to 4')
+```
+
+```{r}
+# plotting death count 
+plot_usmap(
+  regions = "counties",
+  data = county_health_data,
+  values = "average_death_rate",
+  color = "white",
+  linewidth = 0.1
+)
+
+```
+
