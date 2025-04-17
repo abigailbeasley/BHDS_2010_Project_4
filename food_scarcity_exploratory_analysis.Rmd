@@ -17,7 +17,8 @@ library(maps)
 
 library(sf)
 library(tigris)
-
+library(plotly)
+library(jsonlite) # for loading in JSON map
 ```
 
 ```{r}
@@ -31,6 +32,7 @@ health_data <- read.csv('data/IHME_USA_DIABETES_COUNTY_RACE_ETHN_2000_2019_BOTH/
 ```{r}
 names(food_data)
 ```
+
 ```{r}
 names(health_data)
 ```
@@ -68,6 +70,12 @@ county_plot_data <- food_data %>%
 ```
 
 ```{r cleaning health data}
+# cleaning strings
+health_data$location_name <- trimws(health_data$location_name)
+
+# adding state abbreviations for later plotting
+health_data$state_code <- state.abb[match(health_data$location_name, state.name)]
+
 # adding location_level variable
 
 # converting to character
@@ -83,11 +91,33 @@ health_data$location_level <- ifelse(nchar(health_data$fips) == 5, 'County', 'St
 # adding 'Country' level where appropriate
 health_data$location_level <- ifelse(health_data$location_name == 'United States of America', 'Country', health_data$location_level)
 
-# adding death count
-health_data$death_count <- health_data$val * 100000
+```
+
+```{r county_pop}
+# adding county pop
+county_pop <-food_data %>%
+  group_by(fips) %>%
+  summarize(county_population = sum(Pop2010))
+
+# adding county pop to health data
+health_data <- health_data %>%
+  left_join(county_pop, by='fips')
+```
+
+```{r}
+
+# death count per 100k
+health_data$est_per_100k <- health_data$val * 100000
 
 ```
 
+```{r export cleaned data}
+
+# exporting cleaned data
+write.csv(health_data, "diabetes_mortality_2019.csv", row.names = FALSE)
+
+write.csv(food_data, "food_scarcity_2019.csv", row.names = FALSE)
+```
 
 ```{r}
 # function to aggregate variable on county level
@@ -148,7 +178,6 @@ state_agg <- function (df, var) {
 }
 ```
 
-
 ```{r}
 # aggregating poverty to statelevel
 state_pov_rate <- state_agg(food_data, 'PovertyRate')
@@ -175,7 +204,7 @@ Looking at average death rate
 # getting death count by county
 county_health_data <- health_data %>%
   group_by(fips) %>%
-  summarize(average_death_count = mean(death_count, na.rm=TRUE))
+  summarize(average_mortality_rate = mean(val, na.rm=TRUE))
 
 ```
 
@@ -189,24 +218,68 @@ state_level_health <- health_data %>%
   filter(location_level=='State')
 
 # health data on county level
-state_level_health <- health_data %>%
+county_level_health <- health_data %>%
   filter(location_level=='County')
 ```
 
 ```{r}
-filter_factors_county_level <- county_level %>%
-  filter(sex=='Male' & year_id==1990 & age_group_name=='2 to 4')
+factor_filter_state <- state_level_health %>%
+  filter(age_name=='All Ages' & race_name=='Black' & sex_name=='Both')
 ```
 
 ```{r}
-# plotting death count 
-plot_usmap(
-  regions = "counties",
-  data = county_health_data,
-  values = "average_death_rate",
-  color = "white",
-  linewidth = 0.1
-)
+# plotting death count by state
+plot_ly(
+  data = state_avg_death_count,
+  z = ~mean_death_rate,
+  locations = ~state_code,
+  type = "choropleth",
+  locationmode = "USA-states",
+  colorscale = "Purples",
+  colorbar = list(title = "Death Rate"),
+  text = ~paste(
+    "Location:", location_name,
+    "<br>Avg Deaths:", round(mean_death_rate, 5)),
+  hoverinfo = "text") %>%
+  layout(
+    title = 'Death Counts From Diabetes by States',
+    geo = list(scope = "usa")
+  )
 
 ```
 
+```{r}
+county_avg_death_count <- county_level_health %>%
+  group_by(location_name, fips) %>%
+  summarize(mean_death_count = mean(val, na.rm=TRUE))
+
+```
+
+```{r}
+# Load GeoJSON data without simplifying the structure
+geojson_url <- "https://cdn.jsdelivr.net/gh/plotly/datasets@master/geojson-counties-fips.json"
+geojson_data <- fromJSON(fips_url, simplifyVector = FALSE)
+
+# Make sure geo_id column exists
+county_avg_death_count$geo_id <- paste0("0500000US", county_avg_death_count$fips)
+
+# Now build the plot
+plot_ly(data = county_avg_death_count,
+        type = "choropleth",
+        geojson = geojson_data,
+        featureidkey = "properties.GEO_ID",
+        locations = ~geo_id,
+        z = ~mean_death_count,
+        text = ~paste("Location:", location_name,
+                      "<br>Avg Deaths:", round(mean_death_count, 1)),
+        hoverinfo = "text",
+        colorscale = "Purples",
+        colorbar = list(title = "Death Count"),
+        marker = list(line = list(width = 0))) %>%
+  layout(title = "Death Counts From Diabetes by County (Per 100k)",
+         geo = list(scope = "usa",
+                    showlakes = TRUE,
+                    lakecolor = "white"))
+
+
+```
