@@ -14,6 +14,7 @@ library(usmap)
 library(sf)
 library(tigris)
 library(plotly)
+library(DT)
 
 file.exists("OverweightPrevalenceData.csv")
 
@@ -52,8 +53,6 @@ ui <- fluidPage(
                     choices = sort(unique(state_level$state)),
                     selected = c("California", "New York"),  # or any reasonable default
                     multiple = TRUE)
-        
-        
     ),
     # Show a plot of the generate distribution. Adding tabs to switch between
     # map and histogram
@@ -61,7 +60,10 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Map", plotOutput("mapPlot")),
         tabPanel("Histogram", plotlyOutput("histPlot")),
-        tabPanel("Time Series", plotlyOutput("timeSeriesPlot"))
+        tabPanel("Time Series", plotlyOutput("timeSeriesPlot")),
+        tabPanel("Grouped Summary Statistics", DT::dataTableOutput("summaryTable"))
+        
+        
       )
     )
   )
@@ -111,7 +113,7 @@ server <- function(input, output) {
   #Adding time series plot
   output$timeSeriesPlot <- renderPlotly({
     req(input$states)  # only render if at least one state is selected
-    
+  #Filtering the data  
     plot_data <- state_level %>%
       filter(sex == input$gender,
              age_group_name == input$age,
@@ -126,9 +128,38 @@ server <- function(input, output) {
         color = "State"
       ) +
       theme_minimal()
-    
+    #Outputting the plot
     ggplotly(ts_plot)
   })
+  #Adding summary statistics
+  output$summaryTable <- DT::renderDataTable({
+    summary_data <- state_level %>%
+      filter(state %in% input$states)
+  #Grouping data  
+    summary_stats <- summary_data %>%
+      group_by(year_id, sex, age_group_name) %>%
+      summarise(
+        Count = n(),
+        Mean = round(mean(mean_prev, na.rm = TRUE), 2),
+        Median = round(median(mean_prev, na.rm = TRUE), 2),
+        SD = round(sd(mean_prev, na.rm = TRUE), 2),
+        Min = round(min(mean_prev, na.rm = TRUE), 2),
+        Max = round(max(mean_prev, na.rm = TRUE), 2),
+        .groups = "drop"
+      ) %>%
+      arrange(year_id, sex, age_group_name) %>%
+      rename(
+        Year = year_id,
+        Gender = sex,
+        `Age Group` = age_group_name
+      )
+    #Outputting the summary statistics
+    DT::datatable(summary_stats,
+                  options = list(pageLength = 15, autoWidth = TRUE),
+                  rownames = FALSE)
+  })
+  
+  
   
 }
 
