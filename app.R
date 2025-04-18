@@ -121,13 +121,6 @@ ui <- navbarPage("Overweight Population Trends",
                  # page 1: overweight trends
                  tabPanel('Overweight Trends',
                           fluidPage(
-#                            tags$head( # styling
-#                              tags$style(HTML(".well {
-#                                                background-color: #e0f7fa !important;  /* light blue */
-#                                                border: none;
- #                                               box-shadow: none;
-#                                              }"))),
-                            #Application title
                             titlePanel("Trends in Overweight Prevalence Among Younger U.S. Demographics"),
                             
                             #Sidebar with a slider input for number of bins
@@ -154,8 +147,6 @@ ui <- navbarPage("Overweight Population Trends",
                                             choices = sort(unique(state_level$state)),
                                             selected = c("California", "New York"),  # or any reasonable default
                                             multiple = TRUE)
-                                
-                                
                               ),
                               # Show a plot of the generate distribution. Adding tabs to switch between
                               # map and histogram
@@ -169,7 +160,7 @@ ui <- navbarPage("Overweight Population Trends",
                             ))),
                  
                  # page 2: mortality rates
-                 tabPanel('Mortality Rates',
+                 tabPanel('Diabetes Mortality Rates: 2019',
                           fluidPage(
                             titlePanel('Mortality Rates'),
                             
@@ -189,7 +180,15 @@ ui <- navbarPage("Overweight Population Trends",
                                             choices = c('State', 'County'),
                                             selected = 'State')),
                               # Plots
-                              mainPanel(plotlyOutput("mapMortality")
+                              mainPanel(plotlyOutput("mapMortality"),
+                                        h3("Diabetes Mortality Rates in the U.S."),
+                                        p('One of the most common diseases associated with higher BMI is diabetes, and it a leading cause of mortality in the U.S.,
+                                          especially amongst older populations. As the prevalence of obesity and being overweight increases, diabetes will likely become more
+                                          common and mortality rates will rise as well.
+                                          
+                                          The map above shows the mortality rate (number of people per 100k) that died of diabetes in 2019. We can see that not only are mortalities
+                                          not equal across states and counties, but they also tend to differ based on racial demographics as well.')
+                                        
                                         ) # end main panel
                           ) # end side bar layout
           ) # end page
@@ -213,10 +212,23 @@ ui <- navbarPage("Overweight Population Trends",
                          selectInput("geo",
                                      label = "Select Geographic Region",
                                      choices = c('State', 'County'),
-                                     selected = 'State')),
+                                     selected = 'State'),
+                         p('Note: County maps take a moment render')),
                        # Plots
                        mainPanel(plotlyOutput("mapDisparities"),
-                                 plotlyOutput("top10disparities")
+                                 plotlyOutput("top10disparities"),
+                                 h3('Poverty Rate'),
+                                 h3('Median Family Income'),
+                                 h3('Percent of Population with Low Access to Food'),
+                                 h3('Percent of Households Recieving SNAP Benefits'),
+                                 h3('Percent of Households without Access to a Vehicle'),
+                                 h3('Data Souce'),
+                                 p("Please visit ",
+                                   tags$a("the USDA website",
+                                          href = "https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data",
+                                          target = "_blank"), # new window
+                                   " to access the raw data.")
+                                 
                        ) # end main panel
                      ) # end side bar layout
                    ) # end page
@@ -279,7 +291,7 @@ server <- function(input, output) {
                              round(val * 100000, 2), ""),
               hoverinfo = "text") %>%
         layout(title = "Mortality Rates for Diabetes by State (per 100k)",
-               font = list(color = "#ffffff",size = 12, family = "Arial"),
+               font = list(color = "#fff",size = 12, family = "Arial"),
                plot_bgcolor = plot_background_color,
                paper_bgcolor=plot_background_color,
                geo = list(scope = "usa",
@@ -303,7 +315,7 @@ server <- function(input, output) {
               colorscale = "Reds",
               colorbar = list(title = "Deaths per 100k"),
               marker = list(line = list(width = 0))) %>%
-        layout(title = paste(label, 'by U.S. County'),
+        layout(title = "Mortality Rates for Diabetes by County (per 100k)",
                plot_bgcolor = plot_background_color,
                paper_bgcolor=plot_background_color,
                
@@ -389,37 +401,38 @@ server <- function(input, output) {
       # Create plotly table
       plot_ly(type = 'table',
               header = list(values = c("State", label),
-                            fill = list(color = "#E69F00"),
+                            fill = list(color = "salmon"),
                             font = list(size = 18, color = "black")),
         cells = list(values = list(table_data$State,
                                    table_data$disp_var),
                      fill = list(color = plot_background_color),
                      font = list(size = 12, color = "fff"),
                      size=60)) %>% 
-        layout( plot_bgcolor = plot_background_color,
-                paper_bgcolor=plot_background_color)
+        layout(plot_bgcolor = plot_background_color,
+              paper_bgcolor=plot_background_color)
       
     } else { # county level
       # filtering and sorting table data
       table_data = food_disparity_county_level %>%
         arrange(desc(!!var_sym)) %>% 
         mutate(disp_var = comma(!!var_sym)) %>% # adding commas to big nums
-        select(State, disp_var) %>%
+        select(State, County, disp_var) %>%
+        distinct(County, .keep_all=TRUE) %>%
         head(10)
       
       # Create plotly table
       plot_ly(type = 'table',
-              header = list(values = c("State", label),
-                            fill = list(color = "peach"),
+              header = list(values = c('State', "County", label),
+                            fill = list(color = "salmon"),
                             font = list(size = 18, color = "black")),
               cells = list(values = list(table_data$State,
+                                         table_data$County,
                                          table_data$disp_var),
-                           fill = list(color = background_color),
+                           fill = list(color = plot_background_color),
                            font = list(size = 12, color = "#FFF"),
                            size=60)) %>% 
         layout(plot_bgcolor = plot_background_color,
-               paper_bgcolor=plot_background_color
-        )
+               paper_bgcolor=plot_background_color)
       
     }
   })
