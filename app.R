@@ -150,10 +150,14 @@ ui <- navbarPage("Overweight Population Trends",
                               # different plots and data
                               mainPanel(
                                 tabsetPanel(
-                                  tabPanel("Map", plotlyOutput("mapPlot")),
-                                  tabPanel("Histogram", plotlyOutput("histPlot")),
-                                  tabPanel("Time Series", plotlyOutput("timeSeriesPlot")),
-                                  tabPanel("Summary Statistics", DT::dataTableOutput("summaryTable"))
+                                  tabPanel("Map", p("Overweight and obesity prevalence in younger demographics within the United States, particularly those between the ages of 2-19 has become an escalating concern in public health. These conitions are influence by a variety of factors including biological, environmental, and behavioral. Additionally, socioeconimic status and access to food only intensify these factors. The rising rates of younger individuals considered overweight and obese increase the risk of chronic conditions such as Type 2 diabetes, cardiovascular diease, and premature mortality later in life."),
+                                           p("The following plots seek to detail trends and analyze the data associted with the increasing number of young obese and overweight individuals in the United States. First, the interactive map below explores state-level patterms of overweight prevalence by age group and gender over time."), plotlyOutput("mapPlot")),
+                                  tabPanel("Histogram", p("The histogram displays the distirbution of overweight prevalence among different demographic groups in the United States. Users can select age groups and gender to examine how frequently certain overweight rates occur. This visualization helps identify whether overweight prevalence tends to cluster within certain ranges and reveals differences between population subgroups."), plotlyOutput("histPlot")),
+                                  tabPanel("Time Series", p("The time series plot shows how overweight prevalence has changed over time for select age groups and genders. Users are able to observe trends such as rising or falling rates within specific populations. This plot is useful for identifying long-term patterns, comparing increases and decreases amongst states, and the impact of public health initiatives."), plotlyOutput("timeSeriesPlot")),
+                                  tabPanel("Summary Statistics", 
+                    p("Operating summary statistics: Select 
+                      multiple age groups or genders to compare trends across groups."), p("The summary statistics section provides an overview of the data, including the following values: minimum, maximum, mean, standard devation, median, and count. The data is organized by select years and age groups. Compared to the plots, this helps quantify the variation found across different demographics and time periods, offering a 'snapshot' of the dataset's characteristics."), 
+                    DT::dataTableOutput("summaryTable"))
                                 )
                               ) # end main panel
                             ))),
