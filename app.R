@@ -11,15 +11,17 @@
 # add mortality by county
 # add description and 
 
-library(shiny)
+library(shiny) 
 library(tidyverse)
 library(scales)
-library(usmap)
+library(usmap) 
 library(sf)
 library(tigris)
 library(plotly)
 library(jsonlite)
 library(bslib)
+
+## ------------------------ OVERWEIGHT POP DATA --------------------------------
 
 file.exists("OverweightPrevalenceData.csv")
 
@@ -32,11 +34,7 @@ data <- data %>%
   group_by(location_name, sex, age_group_name) %>%
   mutate(percent_change = (mean_prev - lag(mean_prev)) / lag(mean_prev) * 100)
 
-# Food Scarcity Data
-
-# loading GeoJSON data for county maps
-geojson_url <- "https://cdn.jsdelivr.net/gh/plotly/datasets@master/geojson-counties-fips.json"
-geojson_data <- fromJSON(geojson_url, simplifyVector = FALSE)
+## ------------------------ FOOD ACCESS DATA -----------------------------------
 
 # on state level
 food_disparity_state_level <- read.csv("food_disparities_state_agg.csv")
@@ -48,13 +46,27 @@ food_disparity_county_level <- read.csv("food_disparities_county_agg.csv")
 # converting to character for plotting
 food_disparity_county_level$fips <- as.character(food_disparity_county_level$fips)
 
-# some fips are missing trailing 0--adding it in
+# fips are loaded in as numeric, so trailing zeros disappear
+# adding them back in wherever they are missing (when fips has 4 chars instead of 5)
 food_disparity_county_level$fips <- ifelse(nchar(food_disparity_county_level$fips) == 4,
                                            paste0('0',food_disparity_county_level$fips),
                                            food_disparity_county_level$fips)
 
-## MAP DATA
+## ------------------------ MAP DATA -------------------------------------------
 
+# In order to draw county lines with the choropleth maps, data published by plotly
+# (https://github.com/plotly/datasets) is pulled from github. Documentation is
+# available here: https://plotly.com/python/choropleth-maps/
+
+# loading GeoJSON data for county maps
+geojson_url <- "https://cdn.jsdelivr.net/gh/plotly/datasets@master/geojson-counties-fips.json"
+
+# reading in JSON file
+geojson_data <- fromJSON(geojson_url, 
+                         simplifyVector = FALSE)
+
+
+# in order to get county lines, data was 
 # adding geo-data
 # Make sure geo_id column exists
 food_disparity_county_level$geo_id <- paste0("0500000US", food_disparity_county_level$fips)
@@ -62,10 +74,6 @@ food_disparity_county_level$geo_id <- paste0("0500000US", food_disparity_county_
 # adding geo ID for mapping
 food_disparity_county_level$geo_id <- paste0("0500000US", food_disparity_county_level$fips)
 
-
-base_marker <- list(
-  line = list(width = 0)
-)
 
 # for column names
 label_dict <- c(
@@ -76,10 +84,11 @@ label_dict <- c(
   percent_house_no_vehicle_access = "Percent of Households Without Vehicle Access"
 )
 
+# dict of labels for input display and plot titles
 overweight_label_dict <- c(mean_prev = 'Estimated Obesity Prevalence (%)',
                            percent_change ='Estimated Increase in Obesity (%)')
 
-# county level
+## ------------------------ MORTALITY DATA -------------------------------------
 
 # Diabetes Mortality Data 
 diabetes_mortality <- read.csv("diabetes_mortality_2019.csv")
@@ -106,11 +115,15 @@ state_level$state <- state_level$location_name
 # adding state code for plotly map
 state_level$state_code <- state.abb[match(state_level$location_name, state.name)]
 
-## style guidelines
+#### ---------------------- STYLE GUIDELINES -----------------------------------
+
+# background color used to change the plots (same as background specified in
+# the bs_theme function)
 plot_background_color = "#101010"
 
 # # Define UI for application that draws a histogram
 ui <- navbarPage("Overweight Population Trends",
+                 # theme from: https://rstudio.github.io/bslib/articles/theming/index.html
                  theme = bs_theme(bg = "#101010", # background color
                                   fg = "#FFF", # txt color
                                   primary = "#E69F00", # accent used in buttons
@@ -182,19 +195,22 @@ ui <- navbarPage("Overweight Population Trends",
                               # Plots
                               mainPanel(plotlyOutput("mapMortality"),
                                         h3("Diabetes Mortality Rates in the U.S."),
-                                        p('One of the most common diseases associated with higher BMI is diabetes, and it a leading cause of mortality in the U.S.,
-                                          especially amongst older populations. As the prevalence of obesity and being overweight increases, diabetes will likely become more
+                                        p('One of the most common diseases associated with higher BMI is diabetes, and
+                                        it a leading cause of mortality in the U.S.,
+                                          especially amongst older populations. As the prevalence of obesity and being overweight
+                                          increases, diabetes will likely become more
                                           common and mortality rates will rise as well.
                                           
-                                          The map above shows the mortality rate (number of people per 100k) that died of diabetes in 2019. We can see that not only are mortalities
-                                          not equal across states and counties, but they also tend to differ based on racial demographics as well.')
+                                          The map above shows the mortality rate (number of people per 100k) that died of diabetes in 2019.
+                                          We can see that not only are mortalities not equal across states and counties,
+                                          but they also tend to differ based on racial demographics as well.')
                                         
                                         ) # end main panel
                           ) # end side bar layout
           ) # end page
           ), # end tab panel
           # page 3: Food Scarcity
-          tabPanel('Poverty, Food Scarcity and Economic Inequality',
+          tabPanel('Poverty, Food Scarcity and Economic Inequality: 2010',
                    fluidPage(
                      titlePanel('Measures of Poverty and Access to Food by Geographic Location'),
                      
@@ -217,11 +233,40 @@ ui <- navbarPage("Overweight Population Trends",
                        # Plots
                        mainPanel(plotlyOutput("mapDisparities"),
                                  plotlyOutput("top10disparities"),
-                                 h3('Poverty Rate'),
-                                 h3('Median Family Income'),
-                                 h3('Percent of Population with Low Access to Food'),
+                                 h3('Median Family Income & Poverty Rates'),
+                                 p('One of the primary predictors of childhood obesity is poverty',
+                                   tags$a('as noted by Kim Eagle',
+                                          href= 'https://ihpi.umich.edu/news/low-income-communities-more-likely-face-childhood-obesity',
+                                          target = '_blank'),
+                                   'M.D. at the University of Michigan. Childhood obesity is more common in Hispanic and African-American
+                                   children, but Kim Eagle notes that this relationship no longer exists when researchers account for family
+                                   income. Therefore, to understand the trajectory of childhood obesity and overweight populations, researchers
+                                   must examine trends in poverty and economic inequality at a geographic level.'),
+                                 p('\n'),
                                  h3('Percent of Households Recieving SNAP Benefits'),
+                                 p(),
+                                 p('As of 2010, Oregon had the largest percentage of households using SNAP benefits, despite the fact that
+                                   it is not even in the top 10 states in terms of the percentage of people living in poverty. One reason for this 
+                                   may be the fact that eligibility for SNAP benefits is based on state policies and some states may do more to
+                                   fascilitate enrollment than others.'),
+                                 h3('Percent of Population with Low Access to Food'),
+                                 p('Food access for this study was defined as:'),
+                                 p('\n'),
+                                 p(
+                                 '"Low-income census tracts where a significant number (at least 500 people) or share (at least 33 percent) of the
+                                 population is greater than 1 mile from the nearest supermarket, supercenter, or large grocery store for an urban
+                                 area or greater than 10 miles for a rural area. This measure shows that an estimated 18.8 million people, or 6.1
+                                 percent of the U.S. population, live in low-income and low access tracts and are more than 1 mile or 10 miles from
+                                 a supermarket." ', tags$a('(USDA ERS, 2019)',
+                                                          href = 'https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data',
+                                                          target = '_blank')),
+                                 p('\n'),
                                  h3('Percent of Households without Access to a Vehicle'),
+                                 
+                                 p('As expected, areas with low vehicle access tend to be cities, which does not necessarily indicate low access to food
+                                 as walkability and public transport make grocery stores easily accessible. Families with low access to vehicles in
+                                   rural areas where public transport is limited are more likely to find food less accessible. Thus, household accessibility
+                                   to a vehicle is an important indicator for understanding access to food.'),
                                  h3('Data Souce'),
                                  p("Please visit ",
                                    tags$a("the USDA website",
@@ -242,34 +287,37 @@ server <- function(input, output) {
   
   # Map of Overweight trends
   output$mapPlot <- renderPlotly({
-    # Filter data for selected gender, year, and age group
+    
+    # Filter data for selected gender, year, and age group based on user input
     plot_data <- state_level %>%
       filter(sex == input$gender & age_group_name == input$age)
     
     overweight_label = overweight_label_dict[input$metric]
+    
+    # Note: Checkout gganimate package for animations (might not be interactive)
 
     # Animated plot of the prevalence of overweight pop
     plot_ly(data = plot_data,
-            z = plot_data[[input$metric]],
-            frame = ~year_id,
+            type = "choropleth", # US map with interactive hover
+            locationmode = "USA-states", # map of us states
+            z = plot_data[[input$metric]], # fill metric
+            frame = ~year_id, # animation: each frame is a year
             locations = ~state_code,  # state abbreviations (e.g., "CA")
-            type = "choropleth",
-            locationmode = "USA-states",
-            colorscale = "Reds",
-            colorbar = list(title = "Prevalence",
-                            tickformat = ".0%"),
-                            text = ~paste0(location_name,
-                            "<br>",
-                            round(plot_data[[input$metric]] * 100, 2), "%"),
-            marker = list(line = list(color = "black", width = 0.5)),
-            hoverinfo = "text",
-            hoverlabel=list(bgcolor = "#000080")) %>%
-            layout(title = paste(overweight_label, "by State"),
-                   font = list(color = "#ffffff",size = 12, family = "Arial"),
-                   geo = list(scope = "usa",
-                              bgcolor = plot_background_color),
-                   plot_bgcolor = plot_background_color,
-                   paper_bgcolor = plot_background_color)
+            colorscale = "Reds", # colorscale for fill
+            colorbar = list(title = "Prevalence", # Title of legend
+                            tickformat = ".0%"), # Adds percentages
+                            text = ~paste0(location_name, # custom hover text
+                            "<br>", # makes a line break
+                            round(plot_data[[input$metric]] * 100, 2), "%"), # value to display in hover
+            marker = list(line = list(color = "black", width = 0.5)), # adjusting color/width of state outlines
+            hoverinfo = "text", # adding hover text to plot
+            hoverlabel=list(bgcolor = "#000080")) %>% # change hover background
+            layout(title = paste(overweight_label, "by State"), # map title
+                   font = list(color = "#ffffff",size = 12, family = "Arial"), # title font/color
+                   geo = list(scope = "usa", # zoom on US,
+                              bgcolor = plot_background_color), # fixing plot background
+                   plot_bgcolor = plot_background_color, # fixing other part of plot background
+                   paper_bgcolor = plot_background_color) # fixing another part of plot background
   })
   
   # Map of Diabetes Mortality
@@ -283,13 +331,20 @@ server <- function(input, output) {
       # Plotting the chorepleth map
       plot_ly(data = mort_data_state, z = ~val * 100000, # mortality count per 100k
               locations = ~state_code,  # state abbreviations (e.g., "CA")
-              type = "choropleth", locationmode = "USA-states",
-              colorscale = "Reds",
+              type = "choropleth", # map plot
+              locationmode = "USA-states", # US state map
+              colorscale = "Reds", # color scheme for fill
+              # adding legend formatting
               colorbar = list(title = "Mortality Rate (per 100k)"),
+              # customizing state lines
               marker = list(line = list(color = "black", width = 0.5)),
+              # custom hover text
               text = ~paste0(location_name, "<br> Mortality Rate (per 100k): ", 
                              round(val * 100000, 2), ""),
+              # adding custom text to plot
               hoverinfo = "text") %>%
+        # adding title, adjusting font, and changing background as well
+        # as zooming in on US
         layout(title = "Mortality Rates for Diabetes by State (per 100k)",
                font = list(color = "#fff",size = 12, family = "Arial"),
                plot_bgcolor = plot_background_color,
@@ -304,24 +359,27 @@ server <- function(input, output) {
       
       # county level plot 
       plot_ly(data = mort_data_county,
-              type = "choropleth",
-              geojson = geojson_data,
-              featureidkey = "properties.GEO_ID",
-              locations = ~geo_id,
-              z = ~val * 100000,
+              type = "choropleth", # specifying plot type
+              geojson = geojson_data, # adding data to build county lines
+              featureidkey = "properties.GEO_ID", # specifying ID in json file
+              locations = ~geo_id, # geoid in mortality data
+              z = ~val * 100000, # adding fill metric
+              # custom hover text
               text = ~paste0(location_name, "<br> Mortality Rate (per 100k): ", 
                              round(val * 100000, 2), ""),
               hoverinfo = "text",
+              # adding color scheme for fill
               colorscale = "Reds",
+              # formatting legend
               colorbar = list(title = "Deaths per 100k"),
-              marker = list(line = list(width = 0))) %>%
+              # custom lines
+              marker = list(line = list(width = 1, color='Black'))) %>%
+                # adding title and background color
         layout(title = "Mortality Rates for Diabetes by County (per 100k)",
                plot_bgcolor = plot_background_color,
                paper_bgcolor=plot_background_color,
-               
-               geo = list(scope = "usa",
+               geo = list(scope = "usa", # zoom to USA
                           bgcolor = plot_background_color))
-      
     }
     
   })
@@ -372,6 +430,7 @@ server <- function(input, output) {
         layout(title = paste(label, 'by U.S. County'), # Map title 
                font = list(color = "#fff",size = 12, family = "Arial"), # font
                geo = list(scope = "usa", # zoom on US
+              # lines below change white backgrounds to theme color
                           bgcolor = plot_background_color),
                plot_bgcolor = plot_background_color,
                paper_bgcolor=plot_background_color)
@@ -484,5 +543,3 @@ server <- function(input, output) {
 
 # Run the application
 shinyApp(ui = ui, server = server)
-
-
