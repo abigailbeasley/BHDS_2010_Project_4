@@ -15,6 +15,17 @@ library(usmap)
 library(sf)
 library(tigris)
 
+# loading in data
+data <- read.csv('../data/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050_AGES_2_24_OW_OB_Y2024M11D07.CSV')
+
+
+# filtering on state level
+state_level <- data %>%
+  filter(location_level=='State')
+
+# adding state variable
+state_level$state <- state_level$location_name
+
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
@@ -41,23 +52,15 @@ ui <- fluidPage(
 
         # Show a plot of the generated distribution
         mainPanel(
-           plotOutput("mapPlot")
+         tabsetPanel(
+           tabPanel("Map", plotOutput("mapPlot")), #Map tab
+            tabPanel("Histogram", plotlyOutput("histPlot")) #Histogram tab
         )
     )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  
-    # loading in data
-    data <- read.csv('../data/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050/IHME_USA_OVERWEIGHT_OBESITY_PREVALENCE_1990_2050_AGES_2_24_OW_OB_Y2024M11D07.CSV')
-  
-    # filtering on state level
-    state_level <- data %>%
-      filter(location_level=='State')
-    
-    # adding state variable
-    state_level$state <- state_level$location_name
     
     # creating map output
     output$mapPlot <- renderPlot({
@@ -77,6 +80,20 @@ server <- function(input, output) {
           values = "mean_prev")
         
     })
+    #Creating the interactive histogram. 
+    
+    #Filtering data for plot as well.
+    output$histPlot <- renderPlotly({
+        plot_data <- state_level %>%
+        filter(sex == input$gender & year_id == input$year & age_group_name == input$age)
+    
+    #Creating histogram using ggplot
+    ggplot(plot_data, aes(x = mean_perv)) + geom_histogram(bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
+        labs(title = "Distribution of Overweight Prevalence",
+             x = "Mean Prevalence (%)"
+             y = "Frequency" +
+             theme_minimal()
+ })       
 }
 
 # Run the application 
