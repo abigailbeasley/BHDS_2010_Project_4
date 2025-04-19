@@ -97,7 +97,7 @@ state_level$state <- state_level$location_name
 # Adding state code for plotly map
 state_level$state_code <- state.abb[match(state_level$location_name, state.name)]
 
-# State-to-Region Mapping
+# State-to-Region Mapping to reduce size of stats table
 state_to_region <- data.frame(
   state = c("Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
             "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
@@ -128,10 +128,13 @@ ui <- navbarPage("Overweight Population Trends",
                             sidebarLayout(
                               sidebarPanel(
                                 h4("Map Settings"),
+                                #Adding gender selection
                                 selectInput("combo_map_gender", "Select Gender",
                                             choices = c('Female', 'Male', 'Both'), selected = 'Female'),
+                                #Adding age selection
                                 selectInput("combo_map_age", "Select Age Group",
                                             choices = unique(state_level$age_group_name), selected = '2 to 4'),
+                                #Adding metric selection
                                 selectInput('combo_map_metric', 'Choose a Metric',
                                             choices = c('Estimated Obesity Prevalence (%)' = 'mean_prev',
                                                         'Estimated Increase in Obesity (%)' = 'percent_change'),
