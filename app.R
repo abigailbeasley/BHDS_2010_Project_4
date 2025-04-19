@@ -145,7 +145,7 @@ ui <- navbarPage("Overweight Population Trends",
                  ),
                  
                  # Time Series Page
-                 tabPanel("Overweight Time Series",
+                 tabPanel("Time Series",
                           fluidPage(
                             titlePanel("Overweight Prevalence Over Time"),
                             sidebarLayout(
