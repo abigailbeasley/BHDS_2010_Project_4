@@ -408,13 +408,13 @@ output$combo_summaryTable <- DT::renderDataTable({
     
     # Time Series Plot
     output$timeSeriesPlot <- renderPlotly({
-      req(input$states)  # ✅ Use correct input ID
+      req(input$states)  
       
       # Creating data to plot  
       plot_data <- state_level %>%
         filter(sex == input$ts_gender,
                age_group_name == input$ts_age,
-               state %in% input$states)  # ✅ Use correct input ID
+               state %in% input$states)  
       
       # Creating the time series plot  
       ts_plot <- ggplot(plot_data, aes(x = year_id, y = mean_prev, color = state)) +
