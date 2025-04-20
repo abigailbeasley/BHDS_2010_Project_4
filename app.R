@@ -132,7 +132,7 @@ state_level$state <- state_level$location_name
 # Adding state code for plotly map
 state_level$state_code <- state.abb[match(state_level$location_name, state.name)]
 
-# State-to-Region Mapping to reduce size of stats table
+# State-to-Region Mapping to reduce size of stats table and provide more meaningful results
 state_to_region <- data.frame(
   state = c(
     "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
@@ -233,6 +233,7 @@ ui <- navbarPage("Overweight Population Trends",
             choices = unique(state_to_region$region),
             selected = c("South", "West"), multiple = TRUE
           ),
+          # Adding select button for region and to toggle between detailed (expanded table) and a summary view (simplified table)
           actionButton("combo_select_all_regions", "Select All Regions"),
           actionButton("combo_deselect_all_regions", "Deselect All Regions"),
           actionButton("toggle_view", "Switch to Summary View")
@@ -246,6 +247,7 @@ ui <- navbarPage("Overweight Population Trends",
               plotlyOutput("combo_mapPlot")
             )
           ),
+          # Summary table section
           hr(),
           fluidRow(
             column(
@@ -265,6 +267,7 @@ ui <- navbarPage("Overweight Population Trends",
     fluidPage(
       titlePanel("Distribution of Overweight Prevalence"),
       p("The histogram displays the distirbution of overweight prevalence among different demographic groups in the United States. Users can select age groups and gender to examine how frequently certain overweight rates occur. This visualization helps identify whether overweight prevalence tends to cluster within certain ranges and reveals differences between population subgroups."),
+      #Sidebar with inputs
       sidebarLayout(
         sidebarPanel(
           selectInput("hist_gender", "Select Gender",
@@ -291,6 +294,7 @@ ui <- navbarPage("Overweight Population Trends",
     fluidPage(
       titlePanel("Overweight Prevalence Over Time"),
       p("The time series plot shows how overweight prevalence has changed over time for select age groups and genders. Users are able to observe trends such as rising or falling rates within specific populations. This plot is useful for identifying long-term patterns, comparing increases and decreases amongst states, and the impact of public health initiatives."),
+      #Sidebar with inputs
       sidebarLayout(
         sidebarPanel(
           selectInput("ts_gender", "Select Gender",
@@ -306,6 +310,7 @@ ui <- navbarPage("Overweight Population Trends",
             selected = c("California", "New York"),
             multiple = TRUE
           ),
+          # Adding select all button
           actionButton("select_all_states", "Select All States"),
           actionButton("deselect_all_states", "Deselect All States")
         ),
@@ -462,11 +467,12 @@ server <- function(input, output, session) {
       group_by(year_id, sex, age_group_name, region) %>%
       summarise(
         Count = n(),
-        Mean = format(mean(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
-        Median = format(median(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
-        SD = format(sd(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
-        Min = format(min(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
-        Max = format(max(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
+        # Adding nsmall, digits, and trim to keep figures displaying at 0.000, removes just 0 from occuring in the table
+        Mean = format(mean(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE), # Mean
+        Median = format(median(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE), # Median
+        SD = format(sd(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE), # SD
+        Min = format(min(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE), # MInimum
+        Max = format(max(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE), # Maximum
         .groups = "drop"
       ) %>%
       rename(
@@ -491,6 +497,7 @@ server <- function(input, output, session) {
       summary_stats_summary <- summary_stats %>%
         select(Year, Gender, `Age Group`, Region = region, Mean, Median, SD)
 
+      # Using DT:: function to create a more visually appearling and interactive table
       DT::datatable(summary_stats_summary,
         options = list(
           pageLength = 10,
@@ -526,6 +533,7 @@ server <- function(input, output, session) {
   # Interactive histogram
   output$histPlot <- renderPlotly({
     plot_data <- state_level %>%
+    # Filtering data 
       filter(
         sex == input$hist_gender,
         year_id == input$hist_year,
@@ -533,12 +541,13 @@ server <- function(input, output, session) {
       )
     # Creating the histogram plot
     hp <- ggplot(plot_data, aes(x = mean_prev)) +
-      geom_histogram(bins = 30, fill = "skyblue") +
+      geom_histogram(bins = 30, fill = "skyblue") + # Color
       labs(
-        title = "Distribution of Overweight Prevalence",
-        x = "Mean Prevalence (%)",
-        y = "Frequency"
+        title = "Distribution of Overweight Prevalence", # Title
+        x = "Mean Prevalence (%)", # x-axis
+        y = "Frequency" # y-axis
       ) +
+    # Adding theme and changing background to match app
       theme(
         panel.background = element_rect(fill = plot_background_color, color = NA),
         plot.background = element_rect(fill = plot_background_color),
@@ -566,11 +575,12 @@ server <- function(input, output, session) {
     ts_plot <- ggplot(plot_data, aes(x = year_id, y = mean_prev, color = state)) +
       geom_line(size = 1) +
       labs(
-        title = "Overweight Prevalence Over Time",
-        x = "Year",
-        y = "Mean Prevalence (%)",
-        color = "State"
+        title = "Overweight Prevalence Over Time", # Title
+        x = "Year", # x-axis
+        y = "Mean Prevalence (%)", # y-axis
+        color = "State" # color
       ) +
+    # Adding theme and changing background to match the rest of the app
       theme(
         panel.background = element_rect(fill = plot_background_color, color = NA),
         plot.background = element_rect(fill = plot_background_color),
@@ -580,7 +590,7 @@ server <- function(input, output, session) {
         legend.title = element_text(color = "white"),
         legend.background = element_rect(fill = plot_background_color)
       )
-
+  # Outputting the plot
     ggplotly(ts_plot)
   })
 
