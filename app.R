@@ -299,7 +299,7 @@ ui <- navbarPage("Overweight Population Trends",
           selectInput("ts_age", "Select Age Group",
             choices = unique(state_level$age_group_name), selected = "2 to 4"
           ),
-          # Update UI to select regions instead of individual states
+          # Update UI to select states instead of regions
           selectInput("states",
             label = "Select States to Display",
             choices = sort(unique(state_level$state)),
