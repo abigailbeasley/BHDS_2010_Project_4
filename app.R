@@ -24,10 +24,10 @@ library(bslib)
 
 ## ------------------------ OVERWEIGHT POP DATA --------------------------------
 
-file.exists("../OverweightPrevalenceData.csv")
+file.exists("OverweightPrevalenceData.csv")
 
 # Overweight Populations Data
-data <- read.csv("../OverweightPrevalenceData.csv")
+data <- read.csv("OverweightPrevalenceData.csv")
 
 # adding percent change in obesity YoY
 data <- data %>%
@@ -38,10 +38,10 @@ data <- data %>%
 ## ------------------------ FOOD ACCESS DATA -----------------------------------
 
 # on state level
-food_disparity_state_level <- read.csv("../food_disparities_state_agg.csv")
+food_disparity_state_level <- read.csv("food_disparities_state_agg.csv")
 
 # on county level
-food_disparity_county_level <- read.csv("../food_disparities_county_agg.csv")
+food_disparity_county_level <- read.csv("food_disparities_county_agg.csv")
 
 # making sure fips load in correctly and are strings
 # converting to character for plotting
@@ -101,7 +101,7 @@ overweight_label_dict <- c(mean_prev = 'Estimated Obesity Prevalence (%)',
 
 
 # Diabetes Mortality Data 
-diabetes_mortality <- read.csv("../diabetes_mortality_2019.csv")
+diabetes_mortality <- read.csv("diabetes_mortality_2019.csv")
 
 # Filter to state-level data and add state codes 
 state_mortality <- diabetes_mortality %>%
