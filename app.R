@@ -559,10 +559,10 @@ server <- function(input, output, session) {
     ggplotly(hp)
   })
 
-  # Time Series Plot
+   # Time Series Plot
   output$timeSeriesPlot <- renderPlotly({
     req(input$states)
-
+    
     # Creating data to plot
     plot_data <- state_level %>%
       filter(
@@ -570,7 +570,7 @@ server <- function(input, output, session) {
         age_group_name == input$ts_age,
         state %in% input$states
       )
-
+    
     # Creating the time series plot
     ts_plot <- ggplot(plot_data, aes(x = year_id, y = mean_prev, color = state)) +
       geom_line(size = 1) +
@@ -580,7 +580,7 @@ server <- function(input, output, session) {
         y = "Mean Prevalence (%)", # y-axis
         color = "State" # color
       ) +
-    # Adding theme and changing background to match the rest of the app
+      # Adding theme and changing background to match the rest of the app
       theme(
         panel.background = element_rect(fill = plot_background_color, color = NA),
         plot.background = element_rect(fill = plot_background_color),
@@ -588,12 +588,25 @@ server <- function(input, output, session) {
         axis.title = element_text(color = "white"),
         axis.text = element_text(color = "white"),
         legend.title = element_text(color = "white"),
-        legend.background = element_rect(fill = plot_background_color)
+        legend.text = element_text(color = "white"), # makes legend labels white too
+        legend.background = element_rect(fill = plot_background_color),
+        legend.position = 
+        legend.key = element_rect(fill = plot_background_color, color = NA) # ensures background is uniform
       )
-  # Outputting the plot
+    # Outputting the plot
     ggplotly(ts_plot)
   })
-
+  
+  # Select All States button functionality
+  observeEvent(input$select_all_states, {
+    updateSelectInput(session, "states", selected = unique(state_level$state))
+  })
+  
+  # Deselect All States button functionality
+  observeEvent(input$deselect_all_states, {
+    updateSelectInput(session, "states", selected = character(0))
+  })
+  
   # Map of Overweight trends
   output$combo_mapPlot <- renderPlotly({
     # Filter data for selected gender, year, and age group based on user input
