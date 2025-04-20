@@ -11,7 +11,7 @@
 # add mortality by county
 # add description and 
 
-library(shiny) 
+library(shiny)
 library(tidyverse)
 library(scales)
 library(usmap) 
@@ -19,14 +19,15 @@ library(sf)
 library(tigris)
 library(plotly)
 library(jsonlite)
+library(DT)
 library(bslib)
 
 ## ------------------------ OVERWEIGHT POP DATA --------------------------------
 
-file.exists("OverweightPrevalenceData.csv")
+file.exists("../OverweightPrevalenceData.csv")
 
 # Overweight Populations Data
-data <- read.csv("OverweightPrevalenceData.csv")
+data <- read.csv("../OverweightPrevalenceData.csv")
 
 # adding percent change in obesity YoY
 data <- data %>%
@@ -37,20 +38,23 @@ data <- data %>%
 ## ------------------------ FOOD ACCESS DATA -----------------------------------
 
 # on state level
-food_disparity_state_level <- read.csv("food_disparities_state_agg.csv")
+food_disparity_state_level <- read.csv("../food_disparities_state_agg.csv")
 
 # on county level
-food_disparity_county_level <- read.csv("food_disparities_county_agg.csv")
+food_disparity_county_level <- read.csv("../food_disparities_county_agg.csv")
 
 # making sure fips load in correctly and are strings
 # converting to character for plotting
 food_disparity_county_level$fips <- as.character(food_disparity_county_level$fips)
+
+# some fips are missing trailing 0--adding it in
 
 # fips are loaded in as numeric, so trailing zeros disappear
 # adding them back in wherever they are missing (when fips has 4 chars instead of 5)
 food_disparity_county_level$fips <- ifelse(nchar(food_disparity_county_level$fips) == 4,
                                            paste0('0',food_disparity_county_level$fips),
                                            food_disparity_county_level$fips)
+
 
 ## ------------------------ MAP DATA -------------------------------------------
 
@@ -67,13 +71,13 @@ geojson_data <- fromJSON(geojson_url,
 
 
 # in order to get county lines, data was 
+
 # adding geo-data
 # Make sure geo_id column exists
 food_disparity_county_level$geo_id <- paste0("0500000US", food_disparity_county_level$fips)
 
 # adding geo ID for mapping
 food_disparity_county_level$geo_id <- paste0("0500000US", food_disparity_county_level$fips)
-
 
 # for column names
 label_dict <- c(
@@ -84,14 +88,20 @@ label_dict <- c(
   percent_house_no_vehicle_access = "Percent of Households Without Vehicle Access"
 )
 
+overweight_label_dict <- c(mean_prev = 'Estimated Obesity Prevalence (%)',
+                           percent_change ='Estimated Increase in Obesity (%)')
+
+# county level
+
 # dict of labels for input display and plot titles
 overweight_label_dict <- c(mean_prev = 'Estimated Obesity Prevalence (%)',
                            percent_change ='Estimated Increase in Obesity (%)')
 
 ## ------------------------ MORTALITY DATA -------------------------------------
 
+
 # Diabetes Mortality Data 
-diabetes_mortality <- read.csv("diabetes_mortality_2019.csv")
+diabetes_mortality <- read.csv("../diabetes_mortality_2019.csv")
 
 # Filter to state-level data and add state codes 
 state_mortality <- diabetes_mortality %>%
@@ -105,12 +115,37 @@ county_mortality <- diabetes_mortality %>%
 # adding geo ID for mapping
 county_mortality$geo_id <- paste0("0500000US", county_mortality$fips)
 
+
 # Filtering on state level
 state_level <- data %>%
   filter(location_level == 'State')
 
 # Adding state variable
 state_level$state <- state_level$location_name
+
+# Adding state code for plotly map
+state_level$state_code <- state.abb[match(state_level$location_name, state.name)]
+
+# State-to-Region Mapping to reduce size of stats table
+state_to_region <- data.frame(
+  state = c("Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
+            "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
+            "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
+            "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
+            "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", 
+            "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", 
+            "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", 
+            "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", 
+            "Washington", "West Virginia", "Wisconsin", "Wyoming"),
+  
+  region = c("South", "West", "West", "South", "West", "West", "Northeast", "Northeast", "South", 
+             "South", "West", "West", "Midwest", "Midwest", "Midwest", "Midwest", "South", "South", 
+             "Northeast", "Northeast", "Northeast", "Midwest", "Midwest", "South", "Midwest", 
+             "West", "Midwest", "West", "Northeast", "Northeast", "West", "Northeast", "South", 
+             "Midwest", "Midwest", "South", "West", "Northeast", "Northeast", "South", 
+             "Midwest", "South", "South", "West", "Northeast", "South", "West", "South", "Midwest", "West")
+  
+)
 
 # adding state code for plotly map
 state_level$state_code <- state.abb[match(state_level$location_name, state.name)]
@@ -130,47 +165,108 @@ ui <- navbarPage("Overweight Population Trends",
                                   secondary = "#0072B2", # for secondary buttons
                                   success = "#009E73", # color for badges and alerts
                                   base_font = font_google("Inter") # font color
-                                  ),
-                 # page 1: overweight trends
-                 tabPanel('Overweight Trends',
+                 ),
+                 # Combined Summary + Map Page
+                 tabPanel("Summary & Map",
                           fluidPage(
-                            titlePanel("Trends in Overweight Prevalence Among Younger U.S. Demographics"),
-                            
-                            #Sidebar with a slider input for number of bins
+                            titlePanel("Summary Statistics and Overweight Prevalence Map"),
                             sidebarLayout(
                               sidebarPanel(
-                                selectInput("gender",
-                                            label = "Select Gender",
-                                            choices = c('Female', 'Male', 'Both'),
-                                            selected = 'Both'),
-                                selectInput("age",
-                                            label = "Select Age Group",
-                                            choices = unique(state_level$age_group_name),
-                                            selected = '2 to 4'),
-                                selectInput('metric',
-                                            label='Choose a Metric',
+                                h4("Map Settings"),
+                                #Adding gender selection
+                                selectInput("combo_map_gender", "Select Gender",
+                                            choices = c('Female', 'Male', 'Both'), selected = 'Female'),
+                                #Adding age selection
+                                selectInput("combo_map_age", "Select Age Group",
+                                            choices = unique(state_level$age_group_name), selected = '2 to 4'),
+                                #Adding metric selection
+                                selectInput('combo_map_metric', 'Choose a Metric',
                                             choices = c('Estimated Obesity Prevalence (%)' = 'mean_prev',
                                                         'Estimated Increase in Obesity (%)' = 'percent_change'),
-                                            selected='mean_prev'),
-                                sliderInput("year", "Select Year:",
+                                            selected = 'mean_prev'),
+                                hr(),
+                                h4("Summary Table Settings"),
+                                #Adding gender selection
+                                selectInput("combo_sum_gender", "Select Gender",
+                                            choices = c('Female', 'Male', 'Both'), selected = 'Female', multiple = TRUE),
+                                #Adding age selection
+                                selectInput("combo_sum_age", "Select Age Group",
+                                            choices = unique(state_level$age_group_name), selected = '2 to 4', multiple = TRUE),
+                                #Adding region selection instead of state (fixing summary statistics values)
+                                selectInput("combo_sum_regions", "Select Region(s)",
+                                            choices = unique(state_to_region$region),
+                                            selected = c("South", "West"), multiple = TRUE),
+                                actionButton("combo_select_all_regions", "Select All Regions"),
+                                actionButton("combo_deselect_all_regions", "Deselect All Regions"),
+                                actionButton("toggle_view", "Switch to Summary View")
+                                
+                              ),
+                              mainPanel(
+                                fluidRow(
+                                  column(12,
+                                         p("Overweight and obesity prevalence in younger demographics within the United States, particularly those between the ages of 2-19 has become an escalating concern in public health. These conitions are influence by a variety of factors including biological, environmental, and behavioral. Additionally, socioeconimic status and access to food only intensify these factors. The rising rates of younger individuals considered overweight and obese increase the risk of chronic conditions such as Type 2 diabetes, cardiovascular diease, and premature mortality later in life."),
+                                         p("The following plots seek to detail trends and analyze the data associted with the increasing number of young obese and overweight individuals in the United States. First, the interactive map below explores state-level patterns of overweight prevalence by age group and gender over time."),       
+                                         plotlyOutput("combo_mapPlot"))
+                                ),
+                                hr(),
+                                fluidRow(
+                                  column(12, 
+                                         p("Operating summary statistics: Select 
+                      multiple age groups or genders to compare trends across groups. States are grouped into the following regions: Northeast, Midwest, South, and West. Toggle between summary and detailed view to expand or condense the table. Use search for specific years."), p("The summary statistics section provides an overview of the data, including the following values: minimum, maximum, mean, standard devation, median, and count. The data is organized by select years and age groups. Compared to the plots, this helps quantify the variation found across different demographics and time periods, offering a 'snapshot' of the dataset's characteristics."),     
+                                         DT::dataTableOutput("combo_summaryTable"))
+                                )
+                              )
+                            )
+                            
+                          )
+                 ),
+                 # Histogram Page
+                 tabPanel("Overweight Histogram",
+                          fluidPage(
+                            titlePanel("Distribution of Overweight Prevalence"),
+                            p("The histogram displays the distirbution of overweight prevalence among different demographic groups in the United States. Users can select age groups and gender to examine how frequently certain overweight rates occur. This visualization helps identify whether overweight prevalence tends to cluster within certain ranges and reveals differences between population subgroups."),
+                            sidebarLayout(
+                              sidebarPanel(
+                                selectInput("hist_gender", "Select Gender",
+                                            choices = c('Female', 'Male', 'Both'), selected = 'Female'),
+                                selectInput("hist_age", "Select Age Group",
+                                            choices = unique(state_level$age_group_name), selected = '2 to 4'),
+                                sliderInput("hist_year", "Select Year:",
                                             min = min(data$year_id), max = max(data$year_id),
-                                            value = 2000, step = 1, sep = ""),
+                                            value = 2000, step = 1, sep = "")
+                              ),
+                              mainPanel(
+                                plotlyOutput("histPlot")
+                              )
+                            )
+                          )
+                 ),
+                 
+                 # Time Series Page
+                 tabPanel("Overweight Time Series",
+                          fluidPage(
+                            titlePanel("Overweight Prevalence Over Time"),
+                            p("The time series plot shows how overweight prevalence has changed over time for select age groups and genders. Users are able to observe trends such as rising or falling rates within specific populations. This plot is useful for identifying long-term patterns, comparing increases and decreases amongst states, and the impact of public health initiatives."),
+                            sidebarLayout(
+                              sidebarPanel(
+                                selectInput("ts_gender", "Select Gender",
+                                            choices = c('Female', 'Male', 'Both'), selected = 'Female'),
+                                selectInput("ts_age", "Select Age Group",
+                                            choices = unique(state_level$age_group_name), selected = '2 to 4'),
+                                # Update UI to select regions instead of individual states
                                 selectInput("states",
                                             label = "Select States to Display",
                                             choices = sort(unique(state_level$state)),
-                                            selected = c("California", "New York"),  # or any reasonable default
-                                            multiple = TRUE)
+                                            selected = c("California", "New York"),  
+                                            multiple = TRUE),
+                                actionButton("select_all_states", "Select All States"),
+                                actionButton("deselect_all_states", "Deselect All States")
                               ),
-                              # Show a plot of the generate distribution. Adding tabs to switch between
-                              # map and histogram
                               mainPanel(
-                                tabsetPanel(
-                                  tabPanel("Geographic View: US Map", plotlyOutput("mapPlot")),
-                                  tabPanel("Histogram", plotlyOutput("histPlot")),
-                                  tabPanel("Time Series", plotlyOutput("timeSeriesPlot"))
-                                )
-                              ) # end main panel
-                            ))),
+                                plotlyOutput("timeSeriesPlot")
+                              )
+                            )
+                          )),
                  
                  # page 2: mortality rates
                  tabPanel('Diabetes Mortality Rates: 2019',
@@ -185,9 +281,9 @@ ui <- navbarPage("Overweight Population Trends",
                                             choices = unique(state_mortality$age_name),
                                             selected = 'All Ages'),
                                 selectInput("mort_race",
-                                          label = "Select Race",
-                                          choices = unique(state_mortality$race_name),
-                                          selected = 'Total'),
+                                            label = "Select Race",
+                                            choices = unique(state_mortality$race_name),
+                                            selected = 'Total'),
                                 selectInput("mort_geo",
                                             label = "Select Geographic Level",
                                             choices = c('State', 'County'),
@@ -205,119 +301,237 @@ ui <- navbarPage("Overweight Population Trends",
                                           We can see that not only are mortalities not equal across states and counties,
                                           but they also tend to differ based on racial demographics as well.')
                                         
-                                        ) # end main panel
-                          ) # end side bar layout
-          ) # end page
-          ), # end tab panel
-          # page 3: Food Scarcity
-          tabPanel('Poverty, Food Scarcity and Economic Inequality: 2010',
-                   fluidPage(
-                     titlePanel('Measures of Poverty and Access to Food by Geographic Location'),
-                     
-                     # Sidebar with a inputs
-                     sidebarLayout(
-                       sidebarPanel(
-                         selectInput("variable",
-                                     label = "Select Variable",
-                                     choices = c('Poverty Rate (%)'='PovertyRate',
-                                                 'Median Family Income'='MedianFamilyIncome',
-                                                 "Percent of Population with Low Access to Food" = "percent_low_access",
-                                                 "Percent of Households Receiving SNAP" = "percent_houses_SNAP",
-                                                 "Percent of Households Without Vehicle Access" = "percent_house_no_vehicle_access"),
-                                     selected = 'PovertyRate'),
-                         selectInput("geo",
-                                     label = "Select Geographic Region",
-                                     choices = c('State', 'County'),
-                                     selected = 'State'),
-                         p('Note: County maps take a moment render')),
-                       # Plots
-                       mainPanel(plotlyOutput("mapDisparities"),
-                                 plotlyOutput("top10disparities"),
-                                 h3('Median Family Income & Poverty Rates'),
-                                 p('One of the primary predictors of childhood obesity is poverty',
-                                   tags$a('as noted by Kim Eagle',
-                                          href= 'https://ihpi.umich.edu/news/low-income-communities-more-likely-face-childhood-obesity',
-                                          target = '_blank'),
-                                   'M.D. at the University of Michigan. Childhood obesity is more common in Hispanic and African-American
+                              ) # end main panel
+                            ) # end side bar layout
+                          ) # end page
+                 ), # end tab panel
+                 # page 3: Food Scarcity
+                 tabPanel('Poverty, Food Scarcity and Economic Inequality: 2010',
+                          fluidPage(
+                            titlePanel('Measures of Poverty and Access to Food by Geographic Location'),
+                            
+                            # Sidebar with a inputs
+                            sidebarLayout(
+                              sidebarPanel(
+                                selectInput("variable",
+                                            label = "Select Variable",
+                                            choices = c('Poverty Rate (%)'='PovertyRate',
+                                                        'Median Family Income'='MedianFamilyIncome',
+                                                        "Percent of Population with Low Access to Food" = "percent_low_access",
+                                                        "Percent of Households Receiving SNAP" = "percent_houses_SNAP",
+                                                        "Percent of Households Without Vehicle Access" = "percent_house_no_vehicle_access"),
+                                            selected = 'PovertyRate'),
+                                selectInput("geo",
+                                            label = "Select Geographic Region",
+                                            choices = c('State', 'County'),
+                                            selected = 'State'),
+                                p('Note: County maps take a moment render')),
+                              # Plots
+                              mainPanel(plotlyOutput("mapDisparities"),
+                                        plotlyOutput("top10disparities"),
+                                        h3('Median Family Income & Poverty Rates'),
+                                        p('One of the primary predictors of childhood obesity is poverty',
+                                          tags$a('as noted by Kim Eagle',
+                                                 href= 'https://ihpi.umich.edu/news/low-income-communities-more-likely-face-childhood-obesity',
+                                                 target = '_blank'),
+                                          'M.D. at the University of Michigan. Childhood obesity is more common in Hispanic and African-American
                                    children, but Kim Eagle notes that this relationship no longer exists when researchers account for family
                                    income. Therefore, to understand the trajectory of childhood obesity and overweight populations, researchers
                                    must examine trends in poverty and economic inequality at a geographic level.'),
-                                 p('\n'),
-                                 h3('Percent of Households Recieving SNAP Benefits'),
-                                 p(),
-                                 p('As of 2010, Oregon had the largest percentage of households using SNAP benefits, despite the fact that
+                                        p('\n'),
+                                        h3('Percent of Households Recieving SNAP Benefits'),
+                                        p(),
+                                        p('As of 2010, Oregon had the largest percentage of households using SNAP benefits, despite the fact that
                                    it is not even in the top 10 states in terms of the percentage of people living in poverty. One reason for this 
                                    may be the fact that eligibility for SNAP benefits is based on state policies and some states may do more to
                                    fascilitate enrollment than others.'),
-                                 h3('Percent of Population with Low Access to Food'),
-                                 p('Food access for this study was defined as:'),
-                                 p('\n'),
-                                 p(
-                                 '"Low-income census tracts where a significant number (at least 500 people) or share (at least 33 percent) of the
+                                        h3('Percent of Population with Low Access to Food'),
+                                        p('Food access for this study was defined as:'),
+                                        p('\n'),
+                                        p(
+                                          '"Low-income census tracts where a significant number (at least 500 people) or share (at least 33 percent) of the
                                  population is greater than 1 mile from the nearest supermarket, supercenter, or large grocery store for an urban
                                  area or greater than 10 miles for a rural area. This measure shows that an estimated 18.8 million people, or 6.1
                                  percent of the U.S. population, live in low-income and low access tracts and are more than 1 mile or 10 miles from
                                  a supermarket." ', tags$a('(USDA ERS, 2019)',
-                                                          href = 'https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data',
-                                                          target = '_blank')),
-                                 p('\n'),
-                                 h3('Percent of Households without Access to a Vehicle'),
-                                 
-                                 p('As expected, areas with low vehicle access tend to be cities, which does not necessarily indicate low access to food
+                                                           href = 'https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data',
+                                                           target = '_blank')),
+                                        p('\n'),
+                                        h3('Percent of Households without Access to a Vehicle'),
+                                        
+                                        p('As expected, areas with low vehicle access tend to be cities, which does not necessarily indicate low access to food
                                  as walkability and public transport make grocery stores easily accessible. Families with low access to vehicles in
                                    rural areas where public transport is limited are more likely to find food less accessible. Thus, household accessibility
                                    to a vehicle is an important indicator for understanding access to food.'),
-                                 h3('Data Souce'),
-                                 p("Please visit ",
-                                   tags$a("the USDA website",
-                                          href = "https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data",
-                                          target = "_blank"), # new window
-                                   " to access the raw data.")
-                                 
-                       ) # end main panel
-                     ) # end side bar layout
-                   ) # end page
-          ) # end tab panel
-          
-  ) # end ui
-                            
+                                        h3('Data Souce'),
+                                        p("Please visit ",
+                                          tags$a("the USDA website",
+                                                 href = "https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data",
+                                                 target = "_blank"), # new window
+                                          " to access the raw data.")
+                                        
+                              ) # end main panel
+                            ) # end side bar layout
+                          ) # end page
+                 ) # end tab panel
+) # end ui
 
-# Define server logic required to draw a histogram
-server <- function(input, output) {
+
+# Define server logic
+server <- function(input, output, session) {
+  
+  # Combined Summary Table with Region Grouping
+  output$combo_summaryTable <- DT::renderDataTable({
+    # Filtering data based on the selected regions
+    summary_data <- state_level %>%
+      # Merge the state data with the state-to-region mapping
+      left_join(state_to_region, by = "state") %>%
+      filter(
+        region %in% input$combo_sum_regions,  # Filter by selected regions
+        sex %in% input$combo_sum_gender,
+        age_group_name %in% input$combo_sum_age
+      )
+    
+    # Create the summary statistics, grouping by region instead of state
+    summary_stats <- summary_data %>%
+      group_by(year_id, sex, age_group_name, region) %>%
+      summarise(
+        Count = n(),
+        Mean = format(mean(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
+        Median = format(median(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
+        SD = format(sd(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
+        Min = format(min(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
+        Max = format(max(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE),
+        .groups = "drop"
+      ) %>%
+      rename(
+        Year = year_id,
+        Gender = sex,
+        `Age Group` = age_group_name
+      )
+    
+    # Conditionally modify the columns based on the toggle button state
+    if (input$toggle_view %% 2 == 1) {
+      # Detailed view: show all columns, including 'region'
+      DT::datatable(summary_stats,
+                    options = list(
+                      pageLength = 10,
+                      lengthMenu = c(5, 10, 15, 20, 25, 50, 100),
+                      autoWidth = TRUE
+                    ),
+                    rownames = FALSE)
+    } else {
+      # Summary view: show key metrics only (Mean, Median, SD, etc.)
+      summary_stats_summary <- summary_stats %>%
+        select(Year, Gender, `Age Group`, Region = region, Mean, Median, SD)
+      
+      DT::datatable(summary_stats_summary,
+                    options = list(
+                      pageLength = 10,
+                      lengthMenu = c(5, 10, 15, 20, 25, 50, 100),
+                      autoWidth = TRUE
+                    ),
+                    rownames = FALSE)
+    }
+  })
+  
+  
+  # Toggle Button Action: Switch the view between detailed and summary
+  observeEvent(input$toggle_view, {
+    # Toggle the button text based on the current view
+    if (input$toggle_view %% 2 == 1) {
+      updateActionButton(session, "toggle_view", label = "Switch to Summary View")
+    } else {
+      updateActionButton(session, "toggle_view", label = "Switch to Detailed View")
+    }
+  })
+  
+  # When the "Select All Regions" button is pressed, select all regions
+  observeEvent(input$combo_select_all_regions, {
+    updateSelectInput(session, "combo_sum_regions", selected = unique(state_to_region$region))
+  })
+  
+  # When the "Deselect All Regions" button is pressed, deselect all regions
+  observeEvent(input$combo_deselect_all_regions, {
+    updateSelectInput(session, "combo_sum_regions", selected = character(0))
+  })
+  
+  # Interactive histogram
+  output$histPlot <- renderPlotly({
+    plot_data <- state_level %>%
+      filter(sex == input$hist_gender,
+             year_id == input$hist_year,
+             age_group_name == input$hist_age)
+    # Creating the histogram plot
+    hp <- ggplot(plot_data, aes(x = mean_prev)) +
+      geom_histogram(bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
+      labs(
+        title = "Distribution of Overweight Prevalence",
+        x = "Mean Prevalence (%)",
+        y = "Frequency"
+      ) +
+      theme_minimal()
+    # Outputting the plot  
+    ggplotly(hp)
+  })
+  
+  # Time Series Plot
+  output$timeSeriesPlot <- renderPlotly({
+    req(input$states)  
+    
+    # Creating data to plot  
+    plot_data <- state_level %>%
+      filter(sex == input$ts_gender,
+             age_group_name == input$ts_age,
+             state %in% input$states)  
+    
+    # Creating the time series plot  
+    ts_plot <- ggplot(plot_data, aes(x = year_id, y = mean_prev, color = state)) +
+      geom_line(size = 1) +
+      labs(
+        title = "Overweight Prevalence Over Time",
+        x = "Year",
+        y = "Mean Prevalence (%)",
+        color = "State"
+      ) +
+      theme_minimal()
+    
+    ggplotly(ts_plot)
+  })
   
   # Map of Overweight trends
-  output$mapPlot <- renderPlotly({
+  output$combo_mapPlot <- renderPlotly({
     
     # Filter data for selected gender, year, and age group based on user input
     plot_data <- state_level %>%
-      filter(sex == input$gender & age_group_name == input$age)
+      filter(sex == input$combo_map_gender & age_group_name == input$combo_map_age)
     
-    overweight_label = overweight_label_dict[input$metric]
+    overweight_label = overweight_label_dict[input$combo_map_metric]
     
     # Note: Checkout gganimate package for animations (might not be interactive)
-
+    
     # Animated plot of the prevalence of overweight pop
     plot_ly(data = plot_data,
             type = "choropleth", # US map with interactive hover
             locationmode = "USA-states", # map of us states
-            z = plot_data[[input$metric]], # fill metric
+            z = plot_data[[input$combo_map_metric]], # fill metric
             frame = ~year_id, # animation: each frame is a year
             locations = ~state_code,  # state abbreviations (e.g., "CA")
             colorscale = "Reds", # colorscale for fill
             colorbar = list(title = "Prevalence", # Title of legend
                             tickformat = ".0%"), # Adds percentages
-                            text = ~paste0(location_name, # custom hover text
-                            "<br>", # makes a line break
-                            round(plot_data[[input$metric]] * 100, 2), "%"), # value to display in hover
+            text = ~paste0(location_name, # custom hover text
+                           "<br>", # makes a line break
+                           round(plot_data[[input$combo_map_metric]] * 100, 2), "%"), # value to display in hover
             marker = list(line = list(color = "black", width = 0.5)), # adjusting color/width of state outlines
             hoverinfo = "text", # adding hover text to plot
             hoverlabel=list(bgcolor = "#000080")) %>% # change hover background
-            layout(title = paste(overweight_label, "by State"), # map title
-                   font = list(color = "#ffffff",size = 12, family = "Arial"), # title font/color
-                   geo = list(scope = "usa", # zoom on US,
-                              bgcolor = plot_background_color), # fixing plot background
-                   plot_bgcolor = plot_background_color, # fixing other part of plot background
-                   paper_bgcolor = plot_background_color) # fixing another part of plot background
+      layout(title = paste(overweight_label, "by State"), # map title
+             font = list(color = "#ffffff",size = 12, family = "Arial"), # title font/color
+             geo = list(scope = "usa", # zoom on US,
+                        bgcolor = plot_background_color), # fixing plot background
+             plot_bgcolor = plot_background_color, # fixing other part of plot background
+             paper_bgcolor = plot_background_color) # fixing another part of plot background
   })
   
   # Map of Diabetes Mortality
@@ -374,7 +588,7 @@ server <- function(input, output) {
               colorbar = list(title = "Deaths per 100k"),
               # custom lines
               marker = list(line = list(width = 1, color='Black'))) %>%
-                # adding title and background color
+        # adding title and background color
         layout(title = "Mortality Rates for Diabetes by County (per 100k)",
                plot_bgcolor = plot_background_color,
                paper_bgcolor=plot_background_color,
@@ -430,7 +644,7 @@ server <- function(input, output) {
         layout(title = paste(label, 'by U.S. County'), # Map title 
                font = list(color = "#fff",size = 12, family = "Arial"), # font
                geo = list(scope = "usa", # zoom on US
-              # lines below change white backgrounds to theme color
+                          # lines below change white backgrounds to theme color
                           bgcolor = plot_background_color),
                plot_bgcolor = plot_background_color,
                paper_bgcolor=plot_background_color)
@@ -462,13 +676,13 @@ server <- function(input, output) {
               header = list(values = c("State", label),
                             fill = list(color = "salmon"),
                             font = list(size = 18, color = "black")),
-        cells = list(values = list(table_data$State,
-                                   table_data$disp_var),
-                     fill = list(color = plot_background_color),
-                     font = list(size = 12, color = "fff"),
-                     size=60)) %>% 
+              cells = list(values = list(table_data$State,
+                                         table_data$disp_var),
+                           fill = list(color = plot_background_color),
+                           font = list(size = 12, color = "fff"),
+                           size=60)) %>% 
         layout(plot_bgcolor = plot_background_color,
-              paper_bgcolor=plot_background_color)
+               paper_bgcolor=plot_background_color)
       
     } else { # county level
       # filtering and sorting table data
@@ -495,51 +709,6 @@ server <- function(input, output) {
       
     }
   })
-    
-  
-  #Creating the interactive histogram
-  
-  #Filtering data for plot.
-  output$histPlot <- renderPlotly({
-    plot_data <- state_level %>%
-      filter(sex == input$gender & year_id == input$year & age_group_name == input$age)
-    
-    # Creating histogram using ggplot and plotly. 
-    hp <- ggplot(plot_data, aes(x = mean_prev)) +
-      geom_histogram(bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
-      labs(
-        title = "Distribution of Overweight Prevalence",
-        x = "Mean Prevalence (%)",
-        y = "Frequency"
-      ) +
-      theme_minimal()
-    
-    ggplotly(hp)
-  })
-  
-  #Adding time series plot
-  output$timeSeriesPlot <- renderPlotly({
-    req(input$states)  # only render if at least one state is selected
-    
-    plot_data <- state_level %>%
-      filter(sex == input$gender,
-             age_group_name == input$age,
-             state %in% input$states)
-    
-    ts_plot <- ggplot(plot_data, aes(x = year_id, y = mean_prev, color = state)) +
-      geom_line(size = 1) +
-      labs(
-        title = "Overweight Prevalence Over Time",
-        x = "Year",
-        y = "Mean Prevalence (%)",
-        color = "State"
-      ) +
-      theme_minimal()
-    
-    ggplotly(ts_plot)
-  })
-  
 }
-
 # Run the application
 shinyApp(ui = ui, server = server)
