@@ -590,7 +590,7 @@ server <- function(input, output, session) {
         legend.title = element_text(color = "white"),
         legend.text = element_text(color = "white"), # makes legend labels white too
         legend.background = element_rect(fill = plot_background_color),
-        legend.position = 
+        legend.position = "right",
         legend.key = element_rect(fill = plot_background_color, color = NA) # ensures background is uniform
       )
     # Outputting the plot
