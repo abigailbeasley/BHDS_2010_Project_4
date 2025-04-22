@@ -172,7 +172,7 @@ ui <- navbarPage("Overweight Population Trends",
     success = "#009E73", # color for badges and alerts
     base_font = font_google("Inter") # font color
   ),
-  tags$style(HTML(
+  header = tags$style(HTML(
     "table.dataTable tbody td {
                   background-color: #101010 !important;
                   color: #FFF !important;
