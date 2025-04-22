@@ -385,6 +385,7 @@ ui <- navbarPage("Overweight Population Trends",
         # Plots
         mainPanel(
           plotlyOutput("mapDisparities"),
+          h4('Top 10 Regions:'),
           plotlyOutput("top10disparities"),
           h3("Median Family Income & Poverty Rates"),
           p(
@@ -424,7 +425,7 @@ ui <- navbarPage("Overweight Population Trends",
                                  as walkability and public transport make grocery stores easily accessible. Families with low access to vehicles in
                                    rural areas where public transport is limited are more likely to find food less accessible. Thus, household accessibility
                                    to a vehicle is an important indicator for understanding access to food."),
-          h3("Data Souce"),
+          h3("Data Source"),
           p(
             "Please visit ",
             tags$a("the USDA website",
@@ -810,33 +811,35 @@ server <- function(input, output, session) {
           paper_bgcolor = plot_background_color
         )
     } else { # county level
-      # filtering and sorting table data
+      # filtering and sorting table data to get top 10
       table_data <- food_disparity_county_level %>%
-        arrange(desc(!!var_sym)) %>%
+        arrange(desc(!!var_sym)) %>% # filtering by selected variable
         mutate(disp_var = comma(!!var_sym)) %>% # adding commas to big nums
         select(State, County, disp_var) %>%
         distinct(County, .keep_all = TRUE) %>%
-        head(10)
+        head(10) # getting just top 10
 
       # Create plotly table
       plot_ly(
         type = "table",
+        # adding header info/styling
         header = list(
           values = c("State", "County", label),
           fill = list(color = "salmon"),
           font = list(size = 18, color = "black")
         ),
+        # adding values
         cells = list(
           values = list(
             table_data$State,
             table_data$County,
             table_data$disp_var
-          ),
+          ), # styling
           fill = list(color = plot_background_color),
           font = list(size = 12, color = "#FFF"),
           size = 60
         )
-      ) %>%
+      ) %>% # adding theme background color
         layout(
           plot_bgcolor = plot_background_color,
           paper_bgcolor = plot_background_color
