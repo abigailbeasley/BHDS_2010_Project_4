@@ -24,5 +24,7 @@ For code pertaining to the exploratory analysis and data preprocessing please vi
 ### Data Sources
 
 [United States Overweight and Obesity Prevalence Estimates and Forecasts 1990-2050](https://ghdx.healthdata.org/record/ihme-data/us-obesity-overweight-prevalence-1990-2050)
+
 [IHME’s United States Diabetes Mortality by County, Race, and Ethnicity 2000-2019](https://ghdx.healthdata.org/record/ihme-data/us-diabetes-county-race-ethnicity-2000-2019)
+
 [Food Access Research Atlas (2019)](https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data)
