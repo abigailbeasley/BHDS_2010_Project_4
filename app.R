@@ -7,20 +7,17 @@
 #    https://shiny.posit.co/
 #
 
-# Abigail To DO:
-# add mortality by county
-# add description and
-
 library(shiny)
 library(tidyverse)
-library(scales)
-library(usmap)
-library(sf)
-library(tigris)
-library(plotly)
-library(jsonlite)
-library(DT)
-library(bslib)
+library(scales) # 
+library(usmap) # plot data
+library(sf) # more plot data
+library(tigris) # for plot data
+library(plotly) # interactive plots
+library(jsonlite) # for reading in JSON files (map data)
+library(DT) # for interactive tables
+library(bslib) # for dashboard theme
+library(lintr) # formatting code to tidyverse specifications
 
 ## ------------------------ OVERWEIGHT POP DATA --------------------------------
 
@@ -261,7 +258,7 @@ ui <- navbarPage("Overweight Population Trends",
   ),
   # Histogram Page
   tabPanel(
-    "Overweight Histogram",
+    "Distribution of Overweight Prevalence",
     fluidPage(
       titlePanel("Distribution of Overweight Prevalence"),
       p("The histogram displays the distirbution of overweight prevalence among different demographic groups in the United States. Users can select age groups and gender to examine how frequently certain overweight rates occur. This visualization helps identify whether overweight prevalence tends to cluster within certain ranges and reveals differences between population subgroups."),
@@ -287,7 +284,7 @@ ui <- navbarPage("Overweight Population Trends",
 
   # Time Series Page
   tabPanel(
-    "Overweight Time Series",
+    "Overweight Populations over Time",
     fluidPage(
       titlePanel("Overweight Prevalence Over Time"),
       p("The time series plot shows how overweight prevalence has changed over time for select age groups and genders. Users are able to observe trends such as rising or falling rates within specific populations. This plot is useful for identifying long-term patterns, comparing increases and decreases amongst states, and the impact of public health initiatives."),
