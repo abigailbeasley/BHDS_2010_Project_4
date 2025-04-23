@@ -32,6 +32,29 @@ data <- data %>%
   group_by(location_name, sex, age_group_name) %>%
   mutate(percent_change = (mean_prev - lag(mean_prev)) / lag(mean_prev) * 100)
 
+# State-to-Region Mapping to reduce size of stats table and provide more meaningful results
+state_to_region <- data.frame(
+  state = c(
+    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+    "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
+    "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+    "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+    "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
+    "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+    "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia",
+    "Washington", "West Virginia", "Wisconsin", "Wyoming"
+  ),
+  region = c(
+    "South", "West", "West", "South", "West", "West", "Northeast", "Northeast", "South",
+    "South", "West", "West", "Midwest", "Midwest", "Midwest", "Midwest", "South", "South",
+    "Northeast", "Northeast", "Northeast", "Midwest", "Midwest", "South", "Midwest",
+    "West", "Midwest", "West", "Northeast", "Northeast", "West", "Northeast", "South",
+    "Midwest", "Midwest", "South", "West", "Northeast", "Northeast", "South",
+    "Midwest", "South", "South", "West", "Northeast", "South", "West", "South", "Midwest", "West"
+  )
+)
+
 ## ------------------------ FOOD ACCESS DATA -----------------------------------
 
 # on state level
@@ -129,29 +152,6 @@ state_level$state <- state_level$location_name
 # Adding state code for plotly map
 state_level$state_code <- state.abb[match(state_level$location_name, state.name)]
 
-# State-to-Region Mapping to reduce size of stats table and provide more meaningful results
-state_to_region <- data.frame(
-  state = c(
-    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
-    "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
-    "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
-    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
-    "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
-    "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
-    "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
-    "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia",
-    "Washington", "West Virginia", "Wisconsin", "Wyoming"
-  ),
-  region = c(
-    "South", "West", "West", "South", "West", "West", "Northeast", "Northeast", "South",
-    "South", "West", "West", "Midwest", "Midwest", "Midwest", "Midwest", "South", "South",
-    "Northeast", "Northeast", "Northeast", "Midwest", "Midwest", "South", "Midwest",
-    "West", "Midwest", "West", "Northeast", "Northeast", "West", "Northeast", "South",
-    "Midwest", "Midwest", "South", "West", "Northeast", "Northeast", "South",
-    "Midwest", "South", "South", "West", "Northeast", "South", "West", "South", "Midwest", "West"
-  )
-)
-
 # adding state code for plotly map
 state_level$state_code <- state.abb[match(state_level$location_name, state.name)]
 
@@ -195,6 +195,7 @@ ui <- navbarPage("Overweight Population Trends",
   tabPanel(
     "Summary & Map",
     fluidPage(
+      # Title of page
       titlePanel("Summary Statistics and Overweight Prevalence Map"),
       sidebarLayout(
         sidebarPanel(
@@ -239,9 +240,16 @@ ui <- navbarPage("Overweight Population Trends",
           fluidRow(
             column(
               12,
-              p("Overweight and obesity prevalence in younger demographics within the United States, particularly those between the ages of 2-19 has become an escalating concern in public health. These conitions are influence by a variety of factors including biological, environmental, and behavioral. Additionally, socioeconimic status and access to food only intensify these factors. The rising rates of younger individuals considered overweight and obese increase the risk of chronic conditions such as Type 2 diabetes, cardiovascular diease, and premature mortality later in life (Sanyaolu et al., 2019)."),
-              p("The following plots seek to detail trends and analyze the data associted with the increasing number of young obese and overweight individuals in the United States. First, the interactive map below explores state-level patterns of overweight prevalence by age group and gender over time."),
-              p("Reference: Sanyaolu, A., Okorie, C., Qi, X., Locke, J., & Rehman, S. (2019). Childhood and Adolescent Obesity in the United States: A Public Health Concern. Global pediatric health, 6, 2333794X19891305."),
+              # Adding text for the map
+              p("Overweight and obesity prevalence in younger demographics within the United States, particularly those between the ages of 2-19 has 
+                become an escalating concern in public health. These conitions are influence by a variety of factors including biological, environmental, 
+                and behavioral. Additionally, socioeconimic status and access to food only intensify these factors. The rising rates of younger individuals 
+                considered overweight and obese increase the risk of chronic conditions such as Type 2 diabetes, cardiovascular diease, and premature mortality 
+                later in life (Sanyaolu et al., 2019)."),
+              p("The following plots seek to detail trends and analyze the data associted with the increasing number of young obese and overweight individuals 
+                in the United States. First, the interactive map below explores state-level patterns of overweight prevalence by age group and gender over time."),
+              p("Reference: Sanyaolu, A., Okorie, C., Qi, X., Locke, J., & Rehman, S. (2019). Childhood and Adolescent Obesity in the United States: A Public 
+                Health Concern. Global pediatric health, 6, 2333794X19891305."),
               plotlyOutput("combo_mapPlot")
             )
           ),
@@ -250,8 +258,13 @@ ui <- navbarPage("Overweight Population Trends",
           fluidRow(
             column(
               12,
+              # Adding text for summary statistics table
               p("Operating summary statistics: Select
-                      multiple age groups or genders to compare trends across groups. States are grouped into the following regions: Northeast, Midwest, South, and West. Toggle between summary and detailed view to expand or condense the table. Use search for specific years."), p("The summary statistics section provides an overview of the data, including the following values: minimum, maximum, mean, standard devation, median, and count. The data is organized by select years and age groups. Compared to the plots, this helps quantify the variation found across different demographics and time periods, offering a 'snapshot' of the dataset's characteristics."),
+                      multiple age groups or genders to compare trends across groups. States are grouped into the following regions: Northeast, Midwest, South, and West. 
+                Toggle between summary and detailed view to expand or condense the table. Use search for specific years."), 
+              p("The summary statistics section provides an overview of the data, including the following values: minimum, maximum, mean, standard devation, median, 
+                and count. The data is organized by select years and age groups. Compared to the plots, this helps quantify the variation found across different 
+                demographics and time periods, offering a 'snapshot' of the dataset's characteristics."),
               DT::dataTableOutput("combo_summaryTable")
             )
           )
@@ -263,8 +276,14 @@ ui <- navbarPage("Overweight Population Trends",
   tabPanel(
     "Distribution of Overweight Prevalence",
     fluidPage(
+      # Title of page
       titlePanel("Distribution of Overweight Prevalence"),
-      p("The histogram displays the distirbution of overweight prevalence among different demographic groups in the United States. Users can select age groups and gender to examine how frequently certain overweight rates occur. This visualization helps identify whether overweight prevalence tends to cluster within certain ranges and reveals differences between population subgroups."),
+      # Text to go along with histogram
+      p("The histogram displays the distirbution of overweight prevalence among different 
+        demographic groups in the United States. Users can select age groups and gender to
+        examine how frequently certain overweight rates occur. This visualization helps identify 
+        whether overweight prevalence tends to cluster within certain ranges and reveals differences 
+        between population subgroups."),
       #Sidebar with inputs
       sidebarLayout(
         sidebarPanel(
@@ -290,6 +309,7 @@ ui <- navbarPage("Overweight Population Trends",
   tabPanel(
     "Overweight Populations over Time",
     fluidPage(
+      # Title of page
       titlePanel("Overweight Prevalence Over Time"),
       p("The time series plot shows how overweight prevalence has changed over time for select age groups and genders. Users are able to observe trends such as rising or falling rates within specific populations. This plot is useful for identifying long-term patterns, comparing increases and decreases amongst states, and the impact of public health initiatives."),
       #Sidebar with inputs
@@ -455,8 +475,9 @@ server <- function(input, output, session) {
     summary_data <- state_level %>%
       # Merge the state data with the state-to-region mapping
       left_join(state_to_region, by = "state") %>%
+    # Filtering the data by regions, age group, and gender
       filter(
-        region %in% input$combo_sum_regions, # Filter by selected regions
+        region %in% input$combo_sum_regions, # Filter specifically by selected regions
         sex %in% input$combo_sum_gender,
         age_group_name %in% input$combo_sum_age
       )
@@ -467,6 +488,7 @@ server <- function(input, output, session) {
       summarise(
         Count = n(),
         # Adding nsmall, digits, and trim to keep figures displaying at 0.000, removes just 0 from occuring in the table
+        # Adding columns with calculated values as follows:
         Mean = format(mean(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE), # Mean
         Median = format(median(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE), # Median
         SD = format(sd(mean_prev, na.rm = TRUE), nsmall = 3, digits = 3, trim = TRUE), # SD
@@ -478,6 +500,7 @@ server <- function(input, output, session) {
         Year = year_id,
         Gender = sex,
         `Age Group` = age_group_name
+        Region = region
       )
 
     # Conditionally modify the columns based on the toggle button state
@@ -496,7 +519,7 @@ server <- function(input, output, session) {
       summary_stats_summary <- summary_stats %>%
         select(Year, Gender, `Age Group`, Region = region, Mean, Median, SD)
 
-      # Using DT:: function to create a more visually appearling and interactive table
+      # Using DT:: function to create a more visually appealing and interactive table
       DT::datatable(summary_stats_summary,
         options = list(
           pageLength = 10,
@@ -509,7 +532,7 @@ server <- function(input, output, session) {
   })
 
 
-  # Toggle Button Action: Switch the view between detailed and summary
+  # Toggle Button Action: switch the view between detailed and summary
   observeEvent(input$toggle_view, {
     # Toggle the button text based on the current view
     if (input$toggle_view %% 2 == 1) {
@@ -589,7 +612,7 @@ server <- function(input, output, session) {
         legend.title = element_text(color = "white"),
         legend.text = element_text(color = "white"), # makes legend labels white too
         legend.background = element_rect(fill = plot_background_color),
-        legend.position = "right",
+        legend.position = "right", # Place legend to the right side of the data
         legend.key = element_rect(fill = plot_background_color, color = NA) # ensures background is uniform
       )
     # Outputting the plot
